@@ -4,6 +4,8 @@
   "description": "Exercises from the book 'Functional Programming Made Easier'",
   "main": "index.js",
   "scripts": {
+    "build": "npx spago build",
+    "start": "npx spago run",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

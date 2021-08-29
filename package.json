@@ -1,0 +1,24 @@
+{
+  "name": "fp-book-exercises",
+  "version": "1.0.0",
+  "description": "Exercises from the book 'Functional Programming Made Easier'",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/klevente/fp-book-exercises.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/klevente/fp-book-exercises/issues"
+  },
+  "homepage": "https://github.com/klevente/fp-book-exercises#readme",
+  "devDependencies": {
+    "purescript": "^0.14.1",
+    "spago": "^0.20.0"
+  }
+}

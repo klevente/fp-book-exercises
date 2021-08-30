@@ -1,7 +1,8 @@
 module Ch5 where
 
-import Prelude (Unit, show, discard)
+import Prelude (Unit, (+), show, discard)
 
+import Data.List (List(..), (:))
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -34,7 +35,31 @@ applyFlipped = flip apply -- x f = f x
 -- to the left of it, but before $ is applied, so they can be mixed and matched
 infixl 1 applyFlipped as #
 
+-- creates a List containing the parameter that is passed in
+singleton :: ∀ a. a -> List a
+singleton x = x : Nil -- Cons x Nil
+
+-- tests whether the supplied list is empty
+null :: ∀ a. List a -> Boolean
+null Nil = true
+null _ = false
+
+-- creates a new list which has the supplied element added to the end
+snoc :: ∀ a. List a -> a -> List a
+snoc Nil x = singleton x
+snoc (y : ys) x = y : snoc ys x
+
+-- calculates the length of a linked list
+length :: ∀ a. List a -> Int
+length Nil = 0
+length (_ : xs) = 1 + length xs
+
 test :: Effect Unit
 test = do
    log $ show $ flip const 1 2 -- log (show (flip const 1 2))
    flip const 1 2 # show # log -- calculates flip const 1 2, then converts it to String, then logs it to console
+   log $ show $ singleton "xyz"
+   log $ show $ null Nil
+   log $ show $ null ("abc" : Nil)
+   log $ show $ snoc (1 : 2 : Nil) 3
+   log $ show $ length $ 1 : 2 : 3 : Nil

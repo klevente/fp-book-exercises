@@ -157,6 +157,42 @@ filterTailrec pred = reverse <<< go Nil where -- this version builds the list ba
     go nl Nil = nl -- the second parameter here is implied, as it is not present in the top function call
     go nl (x : xs) = if pred x then go (x : nl) xs else go nl xs
 
+-- filter a list of maybes to keep only those elements which are not nothing
+catMaybes :: ∀ a. List (Maybe a) -> List a
+catMaybes Nil      = Nil
+catMaybes (x : xs) = case x of
+    Just y  -> y : catMaybes xs
+    Nothing -> catMaybes xs
+
+-- same thing with pattern matching
+catMaybes' :: ∀ a. List (Maybe a) -> List a
+catMaybes' Nil             = Nil
+catMaybes' (Nothing : xs)  = catMaybes' xs
+catMaybes' ((Just x) : xs) = x : catMaybes' xs
+
+-- generates a list containing numbers between the two inputs, inclusive
+range :: Int -> Int -> List Int
+range start end
+    | start == end = singleton start -- if both parameters are the same, create a singleton list with that number
+    | otherwise = start : range (start + (if start < end then 1 else (-1))) end -- otherwise, add the start value
+                                                                                -- and recurse with an incremented or
+                                                                                -- decremented index depending on the
+                                                                                -- direction
+
+-- same thing but the step direction is calculated only once
+range' :: Int -> Int -> List Int
+range' start end = go start where
+    go start' | start' == end = singleton start'
+              | otherwise     = start' : go (start' + step)
+    step = if start < end then 1 else (-1) -- step is defined in the `where` section so it is accessible in `go`
+
+-- tail recursive version of range
+rangeTailrec :: Int -> Int -> List Int
+rangeTailrec start end = go Nil end start where -- for generating the list forwards, numbers are generated backwards
+    go rl start' end' | start' == end' = start' : rl -- so it starts from the end and progresses to the front
+                      | otherwise      = go (start' : rl) (start' + step) end'
+    step = if start < end then (-1) else (1) -- for that, the step direction is reversed to match backwards creation
+
 test :: Effect Unit
 test = do
    log "flip:"
@@ -239,4 +275,20 @@ test = do
 
    log "filter"
    log $ show $ filter (4 > _) $ (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+   log ""
+
+   log "catMaybes"
+   log $ show $ catMaybes (Just 1 : Nothing : Just 2 : Nothing : Nothing : Just 5 : Nil)
+   log $ show $ catMaybes' (Just 1 : Nothing : Just 2 : Nothing : Nothing : Just 5 : Nil)
+   log ""
+
+   log "range"
+   log $ show $ range 1 10
+   log $ show $ range 3 (-3)
+
+   log $ show $ range' 1 10
+   log $ show $ range' 3 (-3)
+
+   log $ show $ rangeTailrec 1 10
+   log $ show $ rangeTailrec 3 (-3)
    log ""

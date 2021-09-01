@@ -1,6 +1,6 @@
 module Ch5 where
 
-import Prelude (Unit, (+), (-), (<), (>), (>=), (/=), (==), (<<<), show, discard, negate, otherwise, type (~>))
+import Prelude (Unit, (+), (-), (<), (>), (>=), (/=), (==), (<<<), show, discard, negate, otherwise, max, type (~>))
 
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
@@ -157,6 +157,86 @@ filterTailrec pred = reverse <<< go Nil where -- this version builds the list ba
     go nl Nil = nl -- the second parameter here is implied, as it is not present in the top function call
     go nl (x : xs) = if pred x then go (x : nl) xs else go nl xs
 
+-- filter a list of maybes to keep only those elements which are not nothing
+catMaybes :: ∀ a. List (Maybe a) -> List a
+catMaybes Nil      = Nil
+catMaybes (x : xs) = case x of
+    Just y  -> y : catMaybes xs
+    Nothing -> catMaybes xs
+
+-- same thing with pattern matching
+catMaybes' :: ∀ a. List (Maybe a) -> List a
+catMaybes' Nil             = Nil
+catMaybes' (Nothing : xs)  = catMaybes' xs
+catMaybes' ((Just x) : xs) = x : catMaybes' xs
+
+-- generates a list containing numbers between the two inputs, inclusive
+range :: Int -> Int -> List Int
+range start end
+    | start == end = singleton start -- if both parameters are the same, create a singleton list with that number
+    | otherwise = start : range (start + (if start < end then 1 else (-1))) end -- otherwise, add the start value
+                                                                                -- and recurse with an incremented or
+                                                                                -- decremented index depending on the
+                                                                                -- direction
+
+-- same thing but the step direction is calculated only once
+range' :: Int -> Int -> List Int
+range' start end = go start where
+    go start' | start' == end = singleton start'
+              | otherwise     = start' : go (start' + step)
+    step = if start < end then 1 else (-1) -- step is defined in the `where` section so it is accessible in `go`
+
+-- tail recursive version of range
+rangeTailrec :: Int -> Int -> List Int
+rangeTailrec start end = go Nil end start where -- for generating the list forwards, numbers are generated backwards
+    go rl start' end' | start' == end' = start' : rl -- so it starts from the end and progresses to the front
+                      | otherwise      = go (start' : rl) (start' + step) end'
+    step = if start < end then (-1) else (1) -- for that, the step direction is reversed to match backwards creation
+
+-- takes the first n elements of a list, or the whole list if it is smaller
+take :: ∀ a. Int -> List a -> List a
+take _ Nil      = Nil -- base case for when the list is empty, return empty list
+take 0 _        = Nil -- base case when the required number of elements to take is reached, so return a terminus
+take n (x : xs) = x : take (n - 1) xs -- take the head and take `n - 1` elements
+
+-- tail recursive version of take, this version builds the list backwards, so `reverse` is required
+take' :: ∀ a. Int -> List a -> List a
+take' n = reverse <<< go Nil n where -- point-free `go` function, where the `n` and input list parameter is implied
+    go nl _ Nil       = nl -- if end of the list is reached, return the assembled list
+    go nl 0 _         = nl -- if the required elements to take is reached, return the assembled list
+    go nl n' (x : xs) = go (x : nl) (n' - 1) xs -- build the list by appending the first element and recursing
+
+
+-- take which does not recurse infinitely for negative number inputs
+takeNoNegatives :: ∀ a. Int -> List a -> List a
+takeNoNegatives n = go (max 0 n) where -- here the max function ensures that `go` receives 0 or greater
+    go _ Nil       = Nil
+    go 0 _         = Nil
+    go n' (x : xs) = x : go (n' - 1) xs
+
+-- tail recursive take which does not recurse infinitely for negative number inputs
+takeNoNegatives' :: ∀ a. Int -> List a -> List a
+takeNoNegatives' n = reverse <<< go Nil (max 0 n) where
+    go nl _ Nil       = nl
+    go nl 0 _         = nl
+    go nl n' (x : xs) = go (x : nl) (n' - 1) xs
+
+-- discards the first `n` elements from a list, or returns an empty list if it is exhausted
+drop :: ∀ a. Int -> List a -> List a
+drop _ Nil      = Nil
+drop 0 l        = l
+drop n (_ : xs) = drop (n - 1) xs
+
+-- returns those elements from the front which match a predicate, terminating at the first element where it fails
+takeWhile :: ∀ a. (a -> Boolean) -> List a -> List a
+takeWhile _ Nil = Nil
+takeWhile pred (x : xs) = if pred x then x : takeWhile pred xs else Nil
+
+-- drop those elements from the front of a list which match a predicate, returning the rest
+dropWhile :: ∀ a. (a -> Boolean) -> List a -> List a
+dropWhile _ Nil = Nil
+dropWhile pred l@(x : xs) = if pred x then dropWhile pred xs else l -- `l@(x : xs)` creates l and destructures it
+
 test :: Effect Unit
 test = do
    log "flip:"
@@ -239,4 +319,43 @@ test = do
 
    log "filter"
    log $ show $ filter (4 > _) $ (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+   log ""
+
+   log "catMaybes"
+   log $ show $ catMaybes (Just 1 : Nothing : Just 2 : Nothing : Nothing : Just 5 : Nil)
+   log $ show $ catMaybes' (Just 1 : Nothing : Just 2 : Nothing : Nothing : Just 5 : Nil)
+   log ""
+
+   log "range"
+   log $ show $ range 1 10
+   log $ show $ range 3 (-3)
+
+   log $ show $ range' 1 10
+   log $ show $ range' 3 (-3)
+
+   log $ show $ rangeTailrec 1 10
+   log $ show $ rangeTailrec 3 (-3)
+   log ""
+
+   log "take"
+   log $ show $ take 5 (12 : 13 : 14 : Nil)
+   log $ show $ take 5 (-7 : 9 : 0 : 12 : -13 : 45 : 976 : -19 : Nil)
+
+   log $ show $ take' 5 (12 : 13 : 14 : Nil)
+   log $ show $ take' 5 (-7 : 9 : 0 : 12 : -13 : 45 : 976 : -19 : Nil)
+   log ""
+
+   log "drop"
+   log $ show $ drop 2 (1 : 2 : 3 : 4 : 5 : 6 : 7 : Nil)
+   log $ show $ drop 10 (Nil :: List Unit)
+   log ""
+
+   log "takeWhile"
+   log $ show $ takeWhile (_ > 3) (5 : 4 : 3 : 99 : 101 : Nil)
+   log $ show $ takeWhile (_ == -17) (1 : 2 : 3 : Nil)
+   log ""
+
+   log "dropWhile"
+   log $ show $ dropWhile (_ > 3) (5 : 4 : 3 : 99 : 101 : Nil)
+   log $ show $ dropWhile (_ == -17) (1 : 2 : 3 : Nil)
    log ""

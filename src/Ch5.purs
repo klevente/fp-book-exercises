@@ -1,9 +1,10 @@
 module Ch5 where
 
-import Prelude (Unit, (+), (-), (<), (>), (>=), (/=), (==), (<<<), show, discard, negate, otherwise, max, type (~>))
+import Prelude (Unit, (+), (-), (<), (>), (>=), (/=), (==), (<<<), (>>>), show, discard, negate, otherwise, max, type (~>))
 
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..), snd)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -237,6 +238,48 @@ dropWhile :: ∀ a. (a -> Boolean) -> List a -> List a
 dropWhile _ Nil = Nil
 dropWhile pred l@(x : xs) = if pred x then dropWhile pred xs else l -- `l@(x : xs)` creates l and destructures it
 
+-- takes n elements from the end of the list
+takeEnd :: ∀ a. Int -> List a -> List a
+takeEnd n l = go ((length l) - n) l where -- calculate from where the element taking should begin
+    go _ Nil       = Nil -- if the list is empty, return empty list
+    go 0 (x : xs)  = x : go 0 xs -- if the recursion reached the point from which items need to be taken,
+                                 -- append them to the returned list while the input list has elements
+    go n' l'@(_ : xs) = if n' < 0 then l' else go (n' - 1) xs -- if the required amount is negative, the whole list
+                                                              -- should be returned as there are fewer items than
+                                                              -- requested, otherwise just traverse the list until n' = 0
+
+-- better version of takeEnd that only traverses the list once, by not calling `length`
+takeEnd' :: ∀ a. Int -> List a -> List a
+takeEnd' n = go >>> snd where -- extract the second element of the returned tuple
+    go Nil = Tuple 0 Nil -- base case at the end of the list, where the count backwards is 0
+    go (x : xs) = go xs -- call `go` on the tail, passing in the return value to the lambda function below
+        # \(Tuple c nl) -> Tuple (c + 1) $ if c < n then x : nl else nl -- increment the backwards length, and if
+                                                                        -- it is less than the required elements
+                                                                        -- append the current one to the head of the list
+
+-- drops the last n elements from the end of the list
+dropEnd :: ∀ a. Int -> List a -> List a
+dropEnd n = go >>> snd where
+    go Nil = Tuple 0 Nil -- when the end is reached, return the backwards count and an empty list
+    go (x : xs) = go xs -- call `go` on the tail, passing in the return value to the lambda function below
+        # \(Tuple c nl) -> Tuple (c + 1) $ if c < n then nl else x : nl -- same logic but flipped, only start adding
+                                                                        -- elements to the returned list once
+                                                                        -- the required count is reached, meaning that
+                                                                        -- n elements have been dropped
+
+-- creates a single list from two lists, stopping at the end of the shorter list
+zip :: ∀ a b. List a -> List b -> List (Tuple a b)
+zip Nil _             = Nil
+zip _ Nil             = Nil
+zip (x : xs) (y : ys) = Tuple x y : zip xs ys
+
+-- creates two lists of the supplied list of tuples, effectively separating them
+unzip :: ∀ a b. List (Tuple a b) -> Tuple (List a) (List b)
+unzip Nil = Tuple Nil Nil
+unzip (Tuple x y : ts) = unzip ts # \(Tuple xs ys) -> Tuple (x : xs) (y : ys) -- get the unzipped result of the tail,
+                                                                              -- then append the next elements into
+                                                                              -- their respective list with the lambda
+
 test :: Effect Unit
 test = do
    log "flip:"
@@ -358,4 +401,28 @@ test = do
    log "dropWhile"
    log $ show $ dropWhile (_ > 3) (5 : 4 : 3 : 99 : 101 : Nil)
    log $ show $ dropWhile (_ == -17) (1 : 2 : 3 : Nil)
+   log ""
+
+   log "takeEnd"
+   log $ show $ takeEnd 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+   log $ show $ takeEnd 10 (1 : Nil)
+   log $ show $ takeEnd' 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+   log $ show $ takeEnd' 10 (1 : Nil)
+   log ""
+
+   log "dropEnd"
+   log $ show $ dropEnd 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+   log $ show $ dropEnd 10 (1 : Nil)
+   log ""
+
+   log "zip"
+   log $ show $ zip (1 : 2 : 3 : Nil) ("a" : "b" : "c" : "d" : "e" : Nil)
+   log $ show $ zip ("a" : "b" : "c" : "d" : "e" : Nil) (1 : 2 : 3 : Nil)
+   log $ show $ zip (Nil :: List Unit) (1 : 2 : Nil)
+   log ""
+
+   log "unzip"
+   log $ show $ unzip (Tuple 1 "a" : Tuple 2 "b" : Tuple 3 "c" : Nil)
+   log $ show $ unzip (Tuple "a" 1 : Tuple "b" 2 : Tuple "c" 3 : Nil)
+   log $ show $ unzip (Nil :: List (Tuple Unit Unit))
    log ""

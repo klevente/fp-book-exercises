@@ -10,6 +10,7 @@ You can edit this file as you like.
     , "maybe"
     , "prelude"
     , "psci-support"
+    , "tuples"
     ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

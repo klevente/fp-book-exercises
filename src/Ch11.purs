@@ -2,11 +2,11 @@ module Ch11 where
 
 import Prelude (class Ord, Unit, show, negate, discard, otherwise, type (~>), ($), (>))
 
+import Data.Foldable (class Foldable)
 import Data.List (List(..), (:), foldl)
 import Data.List.Types (NonEmptyList(..))
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty(..), (:|))
-import Data.Semigroup.Foldable (foldl1)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -41,6 +41,10 @@ findMaxFold (x : xs) = Just $ foldl max x xs
 findMaxFoldNE :: ∀ a. Ord a => NonEmptyList a -> a
 -- unwrap NonEmptyList to a NonEmpty, which consists of a first element then the rest
 findMaxFoldNE (NonEmptyList (NonEmpty x xs)) = foldl max x xs
+
+foldl1 :: ∀ f a. Foldable f => (a -> a -> a) -> NonEmpty f a -> a
+-- could also use (NonEmpty x xs) for pattern matching, but using the operator is cleaner and more concise
+foldl1 f (x :| xs) = foldl f x xs
 
 -- use `foldl1`, which automatically uses the first element of the `NonEmpty` list as the starting state
 findMaxFoldNE' :: ∀ a. Ord a => NonEmptyList a -> a

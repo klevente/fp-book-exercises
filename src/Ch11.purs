@@ -1,14 +1,15 @@
 module Ch11 where
 
-import Prelude (class Ord, Unit, show, negate, discard, otherwise, type (~>), ($), (>))
+import Prelude (class Ord, Unit, show, negate, discard, otherwise, type (~>), ($), (>), (+), (<>), (<<<))
 
-import Data.Foldable (class Foldable)
-import Data.List (List(..), (:), foldl)
+import Data.Foldable (class Foldable, foldl, foldr, foldMap)
+import Data.List (List(..), (:), singleton)
 import Data.List.Types (NonEmptyList(..))
 import Data.Maybe (Maybe(..))
 import Data.NonEmpty (NonEmpty(..), (:|))
 import Effect (Effect)
 import Effect.Console (log)
+import Data.Semiring (class Semiring, zero)
 
 reverse :: List ~> List
 reverse = foldl (\rl x -> x : rl) Nil
@@ -51,6 +52,37 @@ foldl1 f (x :| xs) = foldl f x xs
 findMaxFoldNE' :: ∀ a. Ord a => NonEmptyList a -> a
 findMaxFoldNE' (NonEmptyList ne) = foldl1 max ne
 
+sum :: List Int -> Int
+sum Nil = 0
+sum (x : xs) = x + sum xs
+
+-- tail-recursive version of `sum`, where state gets passed in through the `go` function
+sum' :: List Int -> Int
+sum' = go 0 where
+    go acc Nil      = acc
+    go acc (x : xs) = go (acc + x) xs
+
+sumFold :: List Int -> Int
+sumFold = foldl (+) 0
+
+-- generic `sum` that is available to all `Foldable`s of `Semiring`s
+-- this abstracts away both the collection type and the contained/result type!
+sumGeneric :: ∀ f a. Foldable f => Semiring a => f a -> a
+sumGeneric = foldl (+) zero
+
+data Tree a = Leaf a | Node (Tree a) (Tree a)
+
+toList :: ∀ a. Tree a -> List a
+toList (Leaf x) = singleton x
+-- use the `append` operator to combine the two sub-lists together
+toList (Node x y) = toList x <> toList y
+
+instance foldableTree :: Foldable Tree where
+    -- point-free! (originally: foldr f acc t = foldr f acc (toList t)
+    foldr f acc = foldr f acc <<< toList
+    foldl f acc = foldl f acc <<< toList
+    foldMap f   = foldMap f <<< toList
+
 test :: Effect Unit
 test = do
     log "reverse:"
@@ -79,5 +111,22 @@ test = do
     log "findMaxFoldNE':"
     log $ show $ findMaxFoldNE' (NonEmptyList $ 37 :| (311 : -1 : 2 : 84 : Nil))
     log $ show $ findMaxFoldNE' (NonEmptyList $ "a" :| ("bbb" : "c" : Nil))
+
+    log "sum:"
+    log $ show $ sum (1 : 2 : 3 : Nil)
+    log "sum':"
+    log $ show $ sum' (1 : 2 : 3 : Nil)
+    log "sumFold:"
+    log $ show $ sumFold (1 : 2 : 3 : Nil)
+    log "sumGeneric:"
+    log $ show $ sumGeneric (1.0 : 2.0 : 3.0 : Nil)
+    log $ show $ sumGeneric [1, 2, 3]
+    log $ show $ sumGeneric [1.0, 2.0, 3.0]
+
+    log "Tree toList:"
+    log $ show $ toList (Node (Node (Leaf 5) (Node (Leaf (-1)) (Leaf 14))) (Leaf 99))
+
+    log "Tree sum:"
+    log $ show $ sumGeneric (Node (Node (Leaf 5) (Node (Leaf (-1)) (Leaf 14))) (Leaf 99))
 
 

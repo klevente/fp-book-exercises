@@ -40,6 +40,7 @@ findMaxFold (x : xs) = Just $ foldl max x xs
 
 findMaxFoldNE :: ∀ a. Ord a => NonEmptyList a -> a
 -- unwrap NonEmptyList to a NonEmpty, which consists of a first element then the rest
+-- could also use (NonEmptyList (x :| xs), but opted not to; the function below uses it though instead
 findMaxFoldNE (NonEmptyList (NonEmpty x xs)) = foldl max x xs
 
 foldl1 :: ∀ f a. Foldable f => (a -> a -> a) -> NonEmpty f a -> a

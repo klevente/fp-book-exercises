@@ -3,6 +3,7 @@ module Ch9 where
 import Prelude (Unit, class Show, class Eq, ($), discard, show, (==), (&&))
 
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
@@ -121,6 +122,32 @@ verifyMod4Monoid = do
     log "Verifying Mod4 Monoid Laws (1 test)"
     log $ show $ mempty <> One == One <> mempty && One <> mempty == One
 
+newtype First a = First (Maybe a)
+derive instance genericFirst :: Generic (First a) _
+instance showFirst :: Show a => Show (First a) where
+    show = genericShow
+
+newtype Last a = Last (Maybe a)
+derive instance genericLast :: Generic (Last a) _
+instance showLast :: Show a => Show (Last a) where
+    show = genericShow
+
+-- when `append`ing `First`s, always choose the left operand if it is not `Nothing`
+instance semigroupFirst :: Semigroup (First a) where
+    append (First Nothing) last = last
+    append first _              = first
+
+instance monoidFirst :: Monoid (First a) where
+    mempty = First Nothing
+
+-- when `append`ing `Last`s, always choose the right operand if it is not `Nothing`
+instance semigroupLast :: Semigroup (Last a) where
+    append first (Last Nothing) = first
+    append _ last               = last
+
+instance monoidLast :: Monoid (Last a) where
+    mempty = Last Nothing
+
 test :: Effect Unit
 test = do
     log "AndBool Semigroup:"
@@ -140,3 +167,8 @@ test = do
 
     verifyMod4Semigroup
     verifyMod4Monoid
+
+    log "First Semigroup:"
+    log $ show $ First Nothing <> First (Just 77)
+    log "Last Semigroup:"
+    log $ show $ Last (Just 1) <> Last (Just 99)

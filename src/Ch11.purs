@@ -3,7 +3,10 @@ module Ch11 where
 import Prelude (class Ord, Unit, show, negate, discard, otherwise, type (~>), ($), (>))
 
 import Data.List (List(..), (:), foldl)
+import Data.List.Types (NonEmptyList(..))
 import Data.Maybe (Maybe(..))
+import Data.NonEmpty (NonEmpty(..), (:|))
+import Data.Semigroup.Foldable (foldl1)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -35,6 +38,14 @@ findMaxFold Nil = Nothing
 -- eta reduction: (\my y -> max my y) => (\my -> max my) => max
 findMaxFold (x : xs) = Just $ foldl max x xs
 
+findMaxFoldNE :: ∀ a. Ord a => NonEmptyList a -> a
+-- unwrap NonEmptyList to a NonEmpty, which consists of a first element then the rest
+findMaxFoldNE (NonEmptyList (NonEmpty x xs)) = foldl max x xs
+
+-- use `foldl1`, which automatically uses the first element of the `NonEmpty` list as the starting state
+findMaxFoldNE' :: ∀ a. Ord a => NonEmptyList a -> a
+findMaxFoldNE' (NonEmptyList l) = foldl1 max l
+
 test :: Effect Unit
 test = do
     log "reverse:"
@@ -55,5 +66,13 @@ test = do
     log "findMaxFold:"
     log $ show $ findMaxFold (37 : 311 : -1 : 2 : 84 : Nil)
     log $ show $ findMaxFold ("a" : "bbb" : "c" : Nil)
+
+    log "findMaxFoldNE:"
+    log $ show $ findMaxFoldNE (NonEmptyList $ 37 :| (311 : -1 : 2 : 84 : Nil))
+    log $ show $ findMaxFoldNE (NonEmptyList $ "a" :| ("bbb" : "c" : Nil))
+
+    log "findMaxFoldNE':"
+    log $ show $ findMaxFoldNE' (NonEmptyList $ 37 :| (311 : -1 : 2 : 84 : Nil))
+    log $ show $ findMaxFoldNE' (NonEmptyList $ "a" :| ("bbb" : "c" : Nil))
 
 

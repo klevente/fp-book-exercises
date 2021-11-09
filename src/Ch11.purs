@@ -44,7 +44,7 @@ findMaxFoldNE (NonEmptyList (NonEmpty x xs)) = foldl max x xs
 
 -- use `foldl1`, which automatically uses the first element of the `NonEmpty` list as the starting state
 findMaxFoldNE' :: ∀ a. Ord a => NonEmptyList a -> a
-findMaxFoldNE' (NonEmptyList l) = foldl1 max l
+findMaxFoldNE' (NonEmptyList ne) = foldl1 max ne
 
 test :: Effect Unit
 test = do

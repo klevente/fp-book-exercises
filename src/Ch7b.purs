@@ -2,7 +2,6 @@ module Ch7b where
 
 import Prelude
 
-import Data.Eq (class Eq)
 import Data.Int (fromString)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))

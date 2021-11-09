@@ -18,6 +18,7 @@ test = do
     log "reverse:"
     log $ show $ reverse (10 : 20 : 30 : Nil)
 
+    log "max:"
     log $ show $ max (-1) 99
     log $ show $ max "aa" "z"
 

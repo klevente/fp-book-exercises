@@ -1,7 +1,8 @@
 module Ch13 where
 
-import Prelude (class Show, Unit, show, discard, ($), (/))
+import Prelude (class Show, Unit, show, discard, identity, ($), (/), (<>), (==))
 
+import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
@@ -11,6 +12,7 @@ data Maybe a = Nothing | Just a
 derive instance genericMaybe :: Generic (Maybe a) _
 instance showMaybe :: Show a => Show (Maybe a) where
     show = genericShow
+derive instance eqMaybe :: Eq a => Eq (Maybe a)
 
 class Functor f where
     map :: ∀ a b. (a -> b) -> f a -> f b
@@ -47,9 +49,20 @@ derive instance genericTuple :: Generic (Tuple a b) _
 instance showTuple :: (Show a, Show b) => Show (Tuple a b) where
     show = genericShow
 
+-- bind the first type variable `a` as only the last one can be variable
 instance functorTuple :: Functor (Tuple a) where
     -- only map the second value inside the `Tuple` because this is a `Functor` not `Bifunctor`
     map f (Tuple x y) = Tuple x $ f y
+
+data Threeple a b c = Threeple a b c
+derive instance genericThreeple :: Generic (Threeple a b c) _
+instance showThreeple :: (Show a, Show b, Show c) => Show (Threeple a b c) where
+    show = genericShow
+
+-- bind the first two type variables (`a`, `b`) as only the last one can be variable
+instance functorThreeple :: Functor (Threeple a b) where
+    -- only map the last value because this is a `Functor`
+    map f (Threeple x y z) = Threeple x y $ f z
 
 test :: Effect Unit
 test = do
@@ -63,3 +76,9 @@ test = do
 
     log "Tuple Functor:"
     log $ show $ (_ / 2) <$> Tuple 10 20
+
+    log "Threeple Functor:"
+    log $ show $ (_ / 2) <$> Threeple 10 20 40
+
+    log $ show $ "Maybe Identity for Nothing: " <> show ((identity <$> Nothing) == (Nothing :: Maybe Unit))
+    log $ show $ "Maybe Identity for Just: " <> show ((identity <$> Just 10) == Just 10)

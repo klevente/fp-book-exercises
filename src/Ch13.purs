@@ -1,6 +1,6 @@
 module Ch13 where
 
-import Prelude (class Show, Unit, show, discard, identity, ($), (/), (<>), (==))
+import Prelude (class Show, Unit, show, discard, identity, ($), (/), (<>), (==), (<<<), (*))
 
 import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
@@ -82,3 +82,8 @@ test = do
 
     log $ show $ "Maybe Identity for Nothing: " <> show ((identity <$> Nothing) == (Nothing :: Maybe Unit))
     log $ show $ "Maybe Identity for Just: " <> show ((identity <$> Just 10) == Just 10)
+
+    let g x = x * 2
+        f x = x * 3
+    log $ show $ "Maybe Composition for Nothing: " <> show ((map (g <<< f) Nothing) == (map f <<< map g) Nothing)
+    log $ show $ "Maybe Composition for Just: " <> show ((map (g <<< f) (Just 10)) == (map f <<< map g) (Just 10))

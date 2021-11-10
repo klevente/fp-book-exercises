@@ -5,6 +5,7 @@ import Prelude (class Show, Unit, show, discard, identity, ($), (/), (<>), (==),
 import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.String.Common (toUpper)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -65,6 +66,20 @@ instance functorThreeple :: Functor (Threeple a b) where
     -- only map the last value because this is a `Functor`
     map f (Threeple x y z) = Threeple x y $ f z
 
+class Bifunctor f where
+    bimap :: ∀ a b c d. (a -> c) -> (b -> d) -> f a b -> f c d
+
+rmap :: ∀ f a b c. Bifunctor f => (b -> c) -> f a b -> f a c
+rmap = bimap identity
+
+lmap :: ∀ f a b c. Bifunctor f => (a -> c) -> f a b -> f c b
+-- point-free version: lmap f = flip bimap identity: flip bimap identity f == bimap f identity
+lmap f = bimap f identity
+
+instance biFunctorEither :: Bifunctor Either where
+    bimap f _ (Left err)  = Left $ f err
+    bimap _ g (Right x) = Right $ g x
+
 test :: Effect Unit
 test = do
     log "Maybe Functor:"
@@ -90,3 +105,9 @@ test = do
 
     log $ show $ "Tuple Identity: " <> show ((identity <$> Tuple 10 20) == Tuple 10 20)
     log $ show $ "Tuple Composition: " <> show ((map (g <<< f) (Tuple 10 20)) == (map f <<< map g) (Tuple 10 20))
+
+    log "Either Bifunctor:"
+    log $ show $ rmap (_ * 2) $ Left "error reason"
+    log $ show $ rmap (_ * 2) $ (Right 10 :: Either Unit _) -- explicit type required as the first type cannot be inferred
+    log $ show $ lmap toUpper $ (Left "error reason" :: Either _ Unit) -- here the second type cannot be inferred
+    log $ show $ lmap toUpper $ Right 10

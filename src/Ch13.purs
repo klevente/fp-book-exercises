@@ -73,7 +73,7 @@ rmap :: ∀ f a b c. Bifunctor f => (b -> c) -> f a b -> f a c
 rmap = bimap identity
 
 lmap :: ∀ f a b c. Bifunctor f => (a -> c) -> f a b -> f c b
--- point-free version: lmap f = flip bimap identity: flip bimap identity f == bimap f identity
+-- point-free version: `lmap = flip bimap identity` as it expands to: `flip bimap identity f == bimap f identity`
 lmap f = bimap f identity
 
 instance bifunctorEither :: Bifunctor Either where

@@ -76,9 +76,12 @@ lmap :: ∀ f a b c. Bifunctor f => (a -> c) -> f a b -> f c b
 -- point-free version: lmap f = flip bimap identity: flip bimap identity f == bimap f identity
 lmap f = bimap f identity
 
-instance biFunctorEither :: Bifunctor Either where
+instance bifunctorEither :: Bifunctor Either where
     bimap f _ (Left err)  = Left $ f err
     bimap _ g (Right x) = Right $ g x
+
+instance bifunctorTuple :: Bifunctor Tuple where
+    bimap f g (Tuple x y) = Tuple (f x) (g y)
 
 test :: Effect Unit
 test = do
@@ -111,3 +114,8 @@ test = do
     log $ show $ rmap (_ * 2) $ (Right 10 :: Either Unit _) -- explicit type required as the first type cannot be inferred
     log $ show $ lmap toUpper $ (Left "error reason" :: Either _ Unit) -- here the second type cannot be inferred
     log $ show $ lmap toUpper $ Right 10
+
+    log "Tuple Bifunctor:"
+    log $ show $ rmap (_ * 2) $ Tuple 80 40
+    log $ show $ lmap (_ / 2) $ Tuple 80 40
+    log $ show $ bimap (_ / 2) (_ * 2) $ Tuple 80 40

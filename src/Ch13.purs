@@ -48,6 +48,7 @@ data Tuple a b = Tuple a b
 derive instance genericTuple :: Generic (Tuple a b) _
 instance showTuple :: (Show a, Show b) => Show (Tuple a b) where
     show = genericShow
+derive instance eqTuple :: (Eq a, Eq b) => Eq (Tuple a b)
 
 -- bind the first type variable `a` as only the last one can be variable
 instance functorTuple :: Functor (Tuple a) where
@@ -82,8 +83,10 @@ test = do
 
     log $ show $ "Maybe Identity for Nothing: " <> show ((identity <$> Nothing) == (Nothing :: Maybe Unit))
     log $ show $ "Maybe Identity for Just: " <> show ((identity <$> Just 10) == Just 10)
-
     let g x = x * 2
         f x = x * 3
     log $ show $ "Maybe Composition for Nothing: " <> show ((map (g <<< f) Nothing) == (map f <<< map g) Nothing)
     log $ show $ "Maybe Composition for Just: " <> show ((map (g <<< f) (Just 10)) == (map f <<< map g) (Just 10))
+
+    log $ show $ "Tuple Identity: " <> show ((identity <$> Tuple 10 20) == Tuple 10 20)
+    log $ show $ "Tuple Composition: " <> show ((map (g <<< f) (Tuple 10 20)) == (map f <<< map g) (Tuple 10 20))

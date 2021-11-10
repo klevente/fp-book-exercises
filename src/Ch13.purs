@@ -23,8 +23,31 @@ instance functorMaybe :: Functor Maybe where
     -- apply the function to the inner value and return it wrapped in `Just`
     map f (Just x) = Just $ f x
 
+data Either a b = Left a | Right b
+derive instance genericEither :: Generic (Either a b) _
+instance showEither :: (Show a, Show b) => Show (Either a b) where
+    show = genericShow
+
+-- correct implementation
+instance functorEither :: Functor (Either a) where
+    map _ (Left err) = Left err
+    map f (Right x) = Right $ f x
+
+-- while people might think this could also work, the issue with this is that the `left` on the left side
+-- is of type `Either a b` while the right side expects `Either a c`, which cannot work, so extracting
+-- the error and re-wrapping it in `Left` ensures that the second type parameter is correct in the return value
+{-
+instance functorEither :: Functor (Either a) where
+    map f (Right x) = Right $ f x
+    map _ left = left
+-}
+
 test :: Effect Unit
 test = do
     log "Maybe Functor:"
     log $ show $ (_ / 2) <$> Just 10
     log $ show $ (_ / 2) <$> Nothing
+
+    log "Either Functor:"
+    log $ show $ (_ / 2) <$> (Right 10 :: Either Unit _) -- explicit type spec for the compiler to know what `Left` is
+    log $ show $ (_ / 2) <$> Left "error reason"

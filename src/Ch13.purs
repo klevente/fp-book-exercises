@@ -83,6 +83,9 @@ instance bifunctorEither :: Bifunctor Either where
 instance bifunctorTuple :: Bifunctor Tuple where
     bimap f g (Tuple x y) = Tuple (f x) (g y)
 
+instance bifunctorThreeple :: Bifunctor (Threeple a) where
+    bimap f g (Threeple x y z) = Threeple x (f y) (g z)
+
 test :: Effect Unit
 test = do
     log "Maybe Functor:"
@@ -119,3 +122,8 @@ test = do
     log $ show $ rmap (_ * 2) $ Tuple 80 40
     log $ show $ lmap (_ / 2) $ Tuple 80 40
     log $ show $ bimap (_ / 2) (_ * 2) $ Tuple 80 40
+
+    log "Threeple Bifunctor:"
+    log $ show $ rmap (_ * 2) $ Threeple 99 80 40
+    log $ show $ lmap (_ / 2) $ Threeple 99 80 40
+    log $ show $ bimap (_ / 2) (_ * 2) $ Threeple 99 80 40

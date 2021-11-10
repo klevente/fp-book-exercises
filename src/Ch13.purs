@@ -42,6 +42,15 @@ instance functorEither :: Functor (Either a) where
     map _ left = left
 -}
 
+data Tuple a b = Tuple a b
+derive instance genericTuple :: Generic (Tuple a b) _
+instance showTuple :: (Show a, Show b) => Show (Tuple a b) where
+    show = genericShow
+
+instance functorTuple :: Functor (Tuple a) where
+    -- only map the second value inside the `Tuple` because this is a `Functor` not `Bifunctor`
+    map f (Tuple x y) = Tuple x $ f y
+
 test :: Effect Unit
 test = do
     log "Maybe Functor:"
@@ -51,3 +60,6 @@ test = do
     log "Either Functor:"
     log $ show $ (_ / 2) <$> (Right 10 :: Either Unit _) -- explicit type spec for the compiler to know what `Left` is
     log $ show $ (_ / 2) <$> Left "error reason"
+
+    log "Tuple Functor:"
+    log $ show $ (_ / 2) <$> Tuple 10 20

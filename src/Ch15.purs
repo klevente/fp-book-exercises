@@ -6,7 +6,8 @@ import Data.Foldable (class Foldable, foldl)
 import Data.Functor.Contravariant (class Contravariant, cmap, (>$<))
 import Data.Int.Bits ((.&.))
 import Data.List (List(..), (:))
-import Data.Profunctor (class Profunctor)
+import Data.Profunctor (class Profunctor, dimap)
+import Data.String (length)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -46,6 +47,14 @@ runFoldL :: ∀ s a b f. Foldable f => Moore s a b -> f a -> b
 -- this is why `<<<` is used instead of `$`, as the functions can only be composed because they are shy 1 parameter
 runFoldL (Moore s0 output transition) = output <<< foldl transition s0
 
+sizer :: Moore Int String String
+-- naive implementation without any `Profunctor` magic
+-- sizer = Moore 0 (\n -> "Size is " <> show n) (\sum str -> sum + (length str))
+-- implementation using `dimap` using the already existing `addr` function
+-- `Functor`s of functions result in cleaner code by enabling the developer to reuse already existing functions
+-- in new contexts!
+sizer = dimap length (\n -> "Size is " <> show n) addr
+
 test :: Effect Unit
 test = do
     log "odd:"
@@ -62,6 +71,9 @@ test = do
     log $ show $ runPredicate ((_ + 1) >$< (Predicate odd)) 10
     log $ show $ runPredicate ((_ + 2) >$< (Predicate odd)) 10
 
-    log $ "runFoldL:"
+    log $ "runFoldL addr:"
     log $ show $ runFoldL addr [1, 2, 3]
     log $ show $ runFoldL addr (1.0 : 2.0 : 3.0 : Nil)
+
+    log $ "runFoldL sizer:"
+    log $ show $ runFoldL sizer [ "This", "is", "the", "test" ]

@@ -2,9 +2,11 @@ module Ch15 where
 
 import Prelude
 
+import Data.Foldable (class Foldable, foldl)
 import Data.Functor.Contravariant (class Contravariant, cmap, (>$<))
-import Data.Profunctor (class Profunctor)
 import Data.Int.Bits ((.&.))
+import Data.List (List(..), (:))
+import Data.Profunctor (class Profunctor)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -34,6 +36,16 @@ instance profunctorMoore :: Profunctor (Moore s) where
     -- then put back into the mapped function by utilising a lambda, very useful technique!
     dimap f g (Moore s0 output transition) = Moore s0 (g <<< output) (\s -> transition s <<< f)
 
+-- function creating a `Moore` instance that adds together `Semiring`s
+addr :: ∀ a. Semiring a => Moore a a a
+addr = Moore zero identity (+)
+
+runFoldL :: ∀ s a b f. Foldable f => Moore s a b -> f a -> b
+-- use `foldl` with the `Moore`s `transition`, then map the result using `output` to its final form
+-- this version is point-free, as the foldable parameter (`xs`) is implied
+-- this is why `<<<` is used instead of `$`, as the functions can only be composed because they are shy 1 parameter
+runFoldL (Moore s0 output transition) = output <<< foldl transition s0
+
 test :: Effect Unit
 test = do
     log "odd:"
@@ -49,3 +61,7 @@ test = do
     log $ show $ runPredicate (cmap (_ + 2) (Predicate odd)) 10
     log $ show $ runPredicate ((_ + 1) >$< (Predicate odd)) 10
     log $ show $ runPredicate ((_ + 2) >$< (Predicate odd)) 10
+
+    log $ "runFoldL:"
+    log $ show $ runFoldL addr [1, 2, 3]
+    log $ show $ runFoldL addr (1.0 : 2.0 : 3.0 : Nil)

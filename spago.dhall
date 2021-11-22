@@ -14,6 +14,7 @@ You can edit this file as you like.
     , "newtype"
     , "nonempty"
     , "prelude"
+    , "profunctor"
     , "psci-support"
     , "strings"
     , "tuples"

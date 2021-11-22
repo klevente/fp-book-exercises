@@ -3,6 +3,7 @@ module Ch15 where
 import Prelude
 
 import Data.Functor.Contravariant (class Contravariant, cmap, (>$<))
+import Data.Profunctor (class Profunctor)
 import Data.Int.Bits ((.&.))
 import Effect (Effect)
 import Effect.Console (log)
@@ -23,6 +24,15 @@ runPredicate (Predicate f) = f
 -- the resulting function is then re-wrapped inside a `Predicate`
 instance contravariantPredicate :: Contravariant Predicate where
     cmap f (Predicate g) = Predicate $ g <<< f
+
+data Moore s a b = Moore s (s -> b) (s -> a -> s)
+
+instance profunctorMoore :: Profunctor (Moore s) where
+    -- explicit function header added to see the types of the parameters
+    dimap :: ∀ a b c d. (c -> a) -> (b -> d) -> Moore s a b -> Moore s c d
+    -- here to access the second variable of the `transition` function, the first one had to be extracted
+    -- then put back into the mapped function by utilising a lambda, very useful technique!
+    dimap f g (Moore s0 output transition) = Moore s0 (g <<< output) (\s -> transition s <<< f)
 
 test :: Effect Unit
 test = do

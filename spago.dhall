@@ -4,7 +4,8 @@ You can edit this file as you like.
 -}
 { name = "my-project"
 , dependencies =
-    [ "console"
+    [ "bifunctors"
+    , "console"
     , "contravariant"
     , "effect"
     , "foldable-traversable"

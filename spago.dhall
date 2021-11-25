@@ -20,6 +20,7 @@ You can edit this file as you like.
     , "psci-support"
     , "strings"
     , "tuples"
+    , "unfoldable"
     ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

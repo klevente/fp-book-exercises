@@ -6,8 +6,10 @@ import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
-import Data.Tuple (Tuple(..), snd)
 import Data.String.CodeUnits (uncons, fromCharArray)
+import Data.Traversable (class Traversable, sequence)
+import Data.Tuple (Tuple(..), snd)
+import Data.Unfoldable (class Unfoldable, replicate, none)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -89,6 +91,14 @@ threeChars' = Tuple <$> char <*> twoChars -- more complex parsers can also be co
 threeChars :: ∀ e. Parser e String
 threeChars = (\c1 c2 c3 -> fromCharArray [c1, c2, c3]) <$> char <*> char <*> char
 
+-- create a `Parser` that can parse the same thing `n` times - remember, this function does not do any parsing,
+-- just handles the creation of said parser - `parse` still needs to be call with the resulted parser to start parsing
+count :: ∀ e a f. Traversable f => Unfoldable f => Int -> Parser e a -> Parser e (f a)
+count n p
+    | n <= 0 = pure none -- in case of not positive numbers, just return a const `Parser` with an empty element (`Unfoldable` `none`)
+    | otherwise = sequence (replicate n p) -- create an `f Parser e a` and convert it to `Parser e (f a)` using `sequence` (from `Traversable`)
+    -- the `replicate` function can be used because `f` is constrained to be `Unfoldable`
+
 test :: Effect Unit
 test = do
     log "char:"
@@ -100,3 +110,6 @@ test = do
     log "threeChars:"
     log $ show $ parse' threeChars "ABC"
     log $ show $ parse' threeChars "A"
+
+    log "count:"
+    log $ show $ parse' (fromCharArray <$> (count 3 char)) "xyz"

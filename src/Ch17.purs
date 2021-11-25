@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Bifunctor (class Bifunctor)
 import Data.Generic.Rep (class Generic)
+import Data.Newtype (class Newtype)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
@@ -43,6 +44,24 @@ instance applyEither :: Apply (Either a) where
     apply (Left err) _ = Left err
 instance applicativeEither :: Applicative (Either a) where
     pure = Right
+
+-- leverage `Either`'s implementation when it is desirable, but allow for modifications where it is required,
+-- like removing the short-circuiting nature of `Either` to allow returning all errors from a function
+newtype Validation err result = Validation (Either err result)
+
+derive instance newtypeValidation :: Newtype (Validation err result) _
+-- use `derive newtype` to automatically create `Functor` and `Bifunctor` instances using the underlying `Either`
+derive newtype instance functorValidation :: Functor (Validation err)
+derive newtype instance bifunctorValidation :: Bifunctor Validation
+derive instance eqValidation :: (Eq err, Eq result) => Eq (Validation err result) -- `newtype` is not necessary here
+derive instance ordValidation :: (Ord err, Ord result) => Ord (Validation err result) -- and here
+-- override `Validation`'s `Apply` instance to gather all errors instead of short-circuiting on the first one
+instance applyValidation :: Semigroup err => Apply (Validation err) where
+    apply (Validation (Left err1)) (Validation (Left err2)) = Validation $ Left (err1 <> err2) -- combine errors
+    apply (Validation (Left err)) _ = Validation $ Left err -- if the second param was not an error but the first is, return it
+    apply (Validation (Right f)) x = f <$> x  -- use `map` to handle both cases when the first param is `Right`
+instance applicativeValidation :: Semigroup err => Applicative (Validation err) where
+    pure = Validation <<< Right
 
 test :: Effect Unit
 test = do

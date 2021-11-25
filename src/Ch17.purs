@@ -1,4 +1,14 @@
-module Ch17 where
+module Ch17
+
+-- this is a list of exported items that can be imported by others
+( Age (..) -- export both the type and data constructors
+, Either (..) -- required for `Validation`'s data constructor
+, FamilyAges(..) -- export both the type and data constructors, but users should construct instances using `createFamilyAges`
+, FamilyAgesRow -- export the type alias
+, Validation(..) -- required for `createFamilyAges` as it returns a `Validation` instance
+, createFamilyAges -- smart constructor for creating `FamilyAges` instances
+, test
+) where
 
 import Prelude
 
@@ -62,6 +72,55 @@ instance applyValidation :: Semigroup err => Apply (Validation err) where
     apply (Validation (Right f)) x = f <$> x  -- use `map` to handle both cases when the first param is `Right`
 instance applicativeValidation :: Semigroup err => Applicative (Validation err) where
     pure = Validation <<< Right
+derive instance genericValidation :: Generic (Validation err result) _
+instance showValidation :: (Show err, Show result) => Show (Validation err result) where
+    show = genericShow
+
+newtype Age = Age Int
+derive instance genericAge :: Generic Age _
+instance showAge :: Show Age where
+    show = genericShow -- this prints `(Age 10)`, while using `derive newtype instance` prints `10`
+newtype FullName = FullName String
+derive instance genericFullName :: Generic FullName _
+instance showFullName :: Show FullName where
+    show = genericShow -- this prints `(FullName xy)`, while using `derive newtype instance` prints `xy`
+
+-- create rows for storing a family's age and names separately
+-- the type parameter `r` signals that these are extensible rows, meaning that they can be combined
+type FamilyAgesRow r = ( fatherAge :: Age, motherAge :: Age, childAge :: Age | r )
+type FamilyNamesRow r = ( fatherName :: FullName, motherName :: FullName, childName :: FullName | r )
+-- create a type for a family, which holds the names and ages of its members
+-- for this, the empty `Family` record is extedned with the two rows defined before
+newtype Family = Family { | FamilyNamesRow (FamilyAgesRow ()) } -- the `()` signals that `Ages` is extended by an empty row
+-- can also be written like this: `Family (Record (FamilyNamesRow (FamilyAgesRow ())))`
+derive instance genericFamily :: Generic Family _
+instance showFamily :: Show Family where
+    show = genericShow
+
+newtype FamilyAges = FamilyAges { | FamilyAgesRow () }
+derive instance genericFamilyAges :: Generic FamilyAges _
+instance showFamilyAges :: Show FamilyAges where
+    show = genericShow
+
+newtype UpperAge = UpperAge Int
+newtype LowerAge = LowerAge Int
+-- validates that a given age is inside the given bounds; the `String` parameter is an error message to append
+validateAge :: LowerAge -> UpperAge -> Age -> String -> Validation (Array String) Age
+-- destructure newtypes as soon as possible as they've served their purpose of type safety and self-documentation
+validateAge (LowerAge lower) (UpperAge upper) (Age age) who
+    | age > upper = Validation $ Left [ who <> " is too old" ]
+    | age < lower = Validation $ Left [ who <> " is too young" ]
+    | otherwise   = Validation $ Right $ Age age
+
+-- smart constructor for `FamilyAges`, i.e. the user can only call this function to create an instance of `FamilyAges`
+-- the input parameter `FamilyAgesRow` can be any record that contains the same fields the row contains
+-- this ensures that only valid `FamilyAges` instances can be created, as the inputs must pass through this function
+createFamilyAges :: { | FamilyAgesRow () } -> Validation (Array String) FamilyAges
+createFamilyAges { fatherAge, motherAge, childAge } = FamilyAges
+    <$> ({ fatherAge: _, motherAge: _, childAge: _ } -- lambda that constructs the record with the supplied 3 parameters denoted by `_`
+    <$> (validateAge (LowerAge 18) (UpperAge 100) fatherAge "Father") -- apply the result of this to the lambda, moving it into the context
+    <*> (validateAge (LowerAge 18) (UpperAge 100) motherAge "Mother") -- apply the next parameter, now the partially applied function is also inside the context
+    <*> (validateAge (LowerAge 1) (UpperAge 18) childAge "Child")) -- apply the final parameter, which yields the result in the context
 
 test :: Effect Unit
 test = do
@@ -79,3 +138,11 @@ test = do
     log $ show $ pure (negate 1) == (pure negate <*> pure 1 :: Either Unit Int)
     log "Interchange: u <*> pure x = pure (_ $ x) <*> u"
     log $ show $ (pure negate <*> pure 1) == (pure (_ $ 1) <*> pure negate :: Either Unit Int)
+
+    log "createFamilyAges:"
+    log $ show $ createFamilyAges { fatherAge: Age 40,  motherAge: Age 30,  childAge: Age 10 }
+    log $ show $ createFamilyAges { fatherAge: Age 400, motherAge: Age 300, childAge: Age 0 }
+    log $ show $ createFamilyAges { fatherAge: Age 4,   motherAge: Age 3,   childAge: Age 10 }
+    log $ show $ createFamilyAges { fatherAge: Age 40,  motherAge: Age 30,  childAge: Age 100 }
+    log $ show $ createFamilyAges { fatherAge: Age 40,  motherAge: Age 3,   childAge: Age 0 }
+

@@ -3,7 +3,11 @@ module Parser where
 import Prelude
 
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(..))
+import Data.Show.Generic (genericShow)
 import Data.Tuple (Tuple(..), snd)
+import Data.String.CodeUnits (uncons, fromCharArray)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -12,7 +16,8 @@ import Effect.Console (log)
 type ParserState a = Tuple String a
 
 -- type class for parser errors
-class ParserError (e :: Type) -- here `e` has an explicit definition of `Type`, as the compiler cannot infer it by itself
+class ParserError (e :: Type) where -- here `e` has an explicit definition of `Type`, as the compiler cannot infer it by itself
+    eof :: e
 
 -- signature of a parser function, which takes in a `String` and returns an error or a `ParserState` if successful
 -- the error type must have a `ParserError` type class instance that allows setting errors
@@ -56,6 +61,42 @@ myParse (Parser f) str = snd <$> f str
 parse :: ∀ e a. Parser e a -> ParseFunction e a
 parse (Parser f) = f
 
+-- version of `parse` that is hard-coded to return a `PError`, so it does not need to be specified on the call site
+parse' :: ∀ a. Parser PError a -> ParseFunction PError a
+parse' = parse
+
+data PError = EOF
+derive instance genericPError :: Generic PError _
+instance showPError :: Show PError where
+    show = genericShow
+instance parserErrorPError :: ParserError PError where
+    eof = EOF
+
+-- parser returns the first character of the input as the parsed value, along with the tail of the input as the rest
+char :: ∀ e. Parser e Char
+char = Parser \s -> case uncons s of
+    Nothing -> Left eof -- return `eof` of the application-specific error type if the input could not be `uncons`ed
+    Just { head, tail } -> Right $ Tuple tail head -- return the tail and the head in the `Tuple` in case of success
+
+twoChars :: ∀ e. Parser e (Tuple Char Char)
+twoChars = Tuple <$> char <*> char -- leverage `<*>` to easily handle the combination of 2 parsers
+
+-- this version stores the returned characters in `Tuple`s
+threeChars' :: ∀ e. Parser e (Tuple Char (Tuple Char Char))
+threeChars' = Tuple <$> char <*> twoChars -- more complex parsers can also be combined using `<*>`
+
+-- this version combines the returned characters into a `String` using `fromCharArray` and a helper lambda
+threeChars :: ∀ e. Parser e String
+threeChars = (\c1 c2 c3 -> fromCharArray [c1, c2, c3]) <$> char <*> char <*> char
+
 test :: Effect Unit
 test = do
-    log "placeholder"
+    log "char:"
+    log $ show $ parse' char "ABC"
+
+    log "twoChars:"
+    log $ show $ parse' twoChars "ABC"
+
+    log "threeChars:"
+    log $ show $ parse' threeChars "ABC"
+    log $ show $ parse' threeChars "A"

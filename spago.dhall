@@ -7,6 +7,7 @@ You can edit this file as you like.
     [ "bifunctors"
     , "console"
     , "contravariant"
+    , "control"
     , "effect"
     , "either"
     , "foldable-traversable"

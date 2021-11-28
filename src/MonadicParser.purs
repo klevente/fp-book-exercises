@@ -2,6 +2,7 @@ module MonadicParser where
 
 import Prelude
 
+import Control.Alt (class Alt, (<|>))
 import Data.CodePoint.Unicode (isAlpha, isDecDigit)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
@@ -164,6 +165,20 @@ digit = satisfy "digit" (isDecDigit <<< codePointFromChar)
 -- use `satisfy` to match a single alpha char
 letter :: ∀ e. ParserError e => Parser e Char
 letter = satisfy "letter" (isAlpha <<< codePointFromChar)
+
+-- `Alt` instance for `Parser`, which allows combining multiple `Parser`s together in a logical OR-kind of fashion (see `alphaNum`)
+instance altParser :: Alt (Parser e) where
+    alt p1 p2 = Parser \s -> case parse p1 s of
+        -- if parsing was successful using `p1`, return the result
+        Right x -> Right x
+        -- if it was unsuccessful, try parsing with `p2`, and return its result either way
+        Left _ -> parse p2 s
+
+-- uses `alt` (`<|>`) to try parse a character as a letter or digit
+alphaNum :: ∀ e. ParserError e => Parser e Char
+-- when the previous 2 parsers both fail, return a `Parser` that contains an `invalidChar` error with the text `alphaNum`
+-- this is required as otherwise the `Parser` would just return `digit` in case of an error, which is not the appropriate description
+alphaNum = letter <|> digit <|> fail (invalidChar "alphaNum")
 
 test :: Effect Unit
 test = do

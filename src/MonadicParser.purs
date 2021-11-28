@@ -104,8 +104,23 @@ char = Parser \s -> case uncons s of
     Nothing -> Left eof -- return `eof` of the application-specific error type if the input could not be `uncons`ed
     Just { head, tail } -> Right $ Tuple tail head -- return the tail and the head in the `Tuple` in case of success
 
+twoCharsA :: ∀ e. Parser e (Tuple Char Char)
+twoCharsA = Tuple <$> char <*> char -- leverage `<*>` to easily handle the combination of 2 parsers
+
+-- `twoChars` using `bind`
+twoCharsB :: ∀ e. Parser e (Tuple Char Char)
+-- get the first char in `c1`, then capture the second in `c2`, then wrap the result up using `pure` and `Tuple`
+twoCharsB = char >>= \c1 -> char >>= \c2 -> pure $ Tuple c1 c2
+
+-- `twoChars` using `do`
 twoChars :: ∀ e. Parser e (Tuple Char Char)
-twoChars = Tuple <$> char <*> char -- leverage `<*>` to easily handle the combination of 2 parsers
+twoChars = do
+    -- get the first char in `c1`
+    c1 <- char
+    -- get the second char in `c2`
+    c2 <- char
+    -- wrap the result up using `pure` and `Tuple`
+    pure $ Tuple c1 c2
 
 -- this version stores the returned characters in `Tuple`s
 threeChars' :: ∀ e. Parser e (Tuple Char (Tuple Char Char))

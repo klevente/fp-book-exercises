@@ -122,13 +122,17 @@ twoChars = do
     -- wrap the result up using `pure` and `Tuple`
     pure $ Tuple c1 c2
 
--- this version stores the returned characters in `Tuple`s
-threeChars' :: ∀ e. Parser e (Tuple Char (Tuple Char Char))
-threeChars' = Tuple <$> char <*> twoChars -- more complex parsers can also be combined using `<*>`
-
 -- this version combines the returned characters into a `String` using `fromCharArray` and a helper lambda
+threeCharsA :: ∀ e. Parser e String
+threeCharsA = (\c1 c2 c3 -> fromCharArray [c1, c2, c3]) <$> char <*> char <*> char
+
+-- `threeChars` using `do`
 threeChars :: ∀ e. Parser e String
-threeChars = (\c1 c2 c3 -> fromCharArray [c1, c2, c3]) <$> char <*> char <*> char
+threeChars = do
+    c1 <- char
+    c2 <- char
+    c3 <- char
+    pure $ fromCharArray [c1, c2, c3]
 
 -- create a `Parser` that can parse the same thing `n` times - remember, this function does not do any parsing,
 -- just handles the creation of said parser - `parse` still needs to be call with the resulted parser to start parsing

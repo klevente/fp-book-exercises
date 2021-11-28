@@ -21,6 +21,7 @@ You can edit this file as you like.
     , "strings"
     , "tuples"
     , "unfoldable"
+    , "unicode"
     ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

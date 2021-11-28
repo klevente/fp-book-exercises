@@ -2,10 +2,12 @@ module MonadicParser where
 
 import Prelude
 
+import Data.CodePoint.Unicode (isDecDigit)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
+import Data.String.CodePoints (codePointFromChar)
 import Data.String.CodeUnits (uncons, fromCharArray)
 import Data.Traversable (class Traversable, sequence)
 import Data.Tuple (Tuple(..), snd)
@@ -153,6 +155,11 @@ satisfy :: ∀ e. ParserError e => String -> (Char -> Boolean) -> Parser e Char
 -- parse the char into `c`, then check if the predicate `pred` holds for it
 -- if it does, return it by wrapping it using `pure`, otherwise return a `Parser` that failed with the appropriate error
 satisfy expected pred = char >>= \c -> if pred c then pure c else fail $ invalidChar expected
+
+-- use `satisfy` to match a single digit
+digit :: ∀ e. ParserError e => Parser e Char
+-- `isDecDigit` works on codepoints, so the input char needs to be converted to one before checking it
+digit = satisfy "digit" (isDecDigit <<< codePointFromChar)
 
 test :: Effect Unit
 test = do

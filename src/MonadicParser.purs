@@ -180,6 +180,11 @@ alphaNum :: ∀ e. ParserError e => Parser e Char
 -- this is required as otherwise the `Parser` would just return `digit` in case of an error, which is not the appropriate description
 alphaNum = letter <|> digit <|> fail (invalidChar "alphaNum")
 
+-- version of `count` that automatically converts the resulting `Array Char` into a `String`
+count' :: ∀ e. Int -> Parser e Char -> Parser e String
+-- use `map` (`<$>`) as the resulting array is in the `Parser` context
+count' n p = fromCharArray <$> count n p
+
 test :: Effect Unit
 test = do
     log "char:"
@@ -194,3 +199,12 @@ test = do
 
     log "count:"
     log $ show $ parse' (fromCharArray <$> (count 3 char)) "xyz"
+
+    log "digit:"
+    log $ show $ parse' (count' 3 digit) "123456"
+    log $ show $ parse' (count' 3 digit) "abc456"
+    log "letter:"
+    log $ show $ parse' (count' 4 letter) "Freddy"
+    log "alphaNum:"
+    log $ show $ parse' (count' 10 alphaNum) "a1b2c3d4e5"
+    log $ show $ parse' (count' 10 alphaNum) "######"

@@ -20,6 +20,7 @@ type ParserState a = Tuple String a
 -- type class for parser errors
 class ParserError (e :: Type) where -- here `e` has an explicit definition of `Type`, as the compiler cannot infer it by itself
     eof :: e
+    invalidChar :: String -> e
 
 -- signature of a parser function, which takes in a `String` and returns an error or a `ParserState` if successful
 -- the error type must have a `ParserError` type class instance that allows setting errors
@@ -91,12 +92,13 @@ parse (Parser f) = f
 parse' :: ∀ a. Parser PError a -> ParseFunction PError a
 parse' = parse
 
-data PError = EOF
+data PError = EOF | InvalidChar String
 derive instance genericPError :: Generic PError _
 instance showPError :: Show PError where
     show = genericShow
 instance parserErrorPError :: ParserError PError where
     eof = EOF
+    invalidChar = InvalidChar
 
 -- parser returns the first character of the input as the parsed value, along with the tail of the input as the rest
 char :: ∀ e. Parser e Char
@@ -141,6 +143,16 @@ count n p
     | n <= 0 = pure none -- in case of not positive numbers, just return a const `Parser` with an empty element (`Unfoldable` `none`)
     | otherwise = sequence (replicate n p) -- create an `f Parser e a` and convert it to `Parser e (f a)` using `sequence` (from `Traversable`)
     -- the `replicate` function can be used because `f` is constrained to be `Unfoldable`
+
+-- return a `Parser` that always fails, i.e. returns `Left` with the specified `ParserError`
+fail :: ∀ e a. ParserError e => e -> Parser e a
+-- `const` is the same as `\_ -> Left err` but it describes the intent better
+fail err = Parser $ const $ Left err
+
+satisfy :: ∀ e. ParserError e => String -> (Char -> Boolean) -> Parser e Char
+-- parse the char into `c`, then check if the predicate `pred` holds for it
+-- if it does, return it by wrapping it using `pure`, otherwise return a `Parser` that failed with the appropriate error
+satisfy expected pred = char >>= \c -> if pred c then pure c else fail $ invalidChar expected
 
 test :: Effect Unit
 test = do

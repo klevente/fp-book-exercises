@@ -2,7 +2,7 @@ module MonadicParser where
 
 import Prelude
 
-import Data.CodePoint.Unicode (isDecDigit)
+import Data.CodePoint.Unicode (isAlpha, isDecDigit)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
@@ -160,6 +160,10 @@ satisfy expected pred = char >>= \c -> if pred c then pure c else fail $ invalid
 digit :: ∀ e. ParserError e => Parser e Char
 -- `isDecDigit` works on codepoints, so the input char needs to be converted to one before checking it
 digit = satisfy "digit" (isDecDigit <<< codePointFromChar)
+
+-- use `satisfy` to match a single alpha char
+letter :: ∀ e. ParserError e => Parser e Char
+letter = satisfy "letter" (isAlpha <<< codePointFromChar)
 
 test :: Effect Unit
 test = do

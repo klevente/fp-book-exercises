@@ -18,17 +18,37 @@ instance functorMaybe :: Functor Maybe where
     map _ Nothing  = Nothing
 
 instance applyMaybe :: Apply Maybe where
-    apply Nothing _ = Nothing
+    apply Nothing  _ = Nothing
     apply (Just f) x = f <$> x
 
 instance applicativeMaybe :: Applicative Maybe where
     pure = Just
 
 instance bindMaybe :: Bind Maybe where
-    bind Nothing _ = Nothing
+    bind Nothing  _ = Nothing
     bind (Just x) f = f x
 
 instance monadMaybe :: Monad Maybe
+
+data Either a b = Left a | Right b
+derive instance functorEither :: Functor (Either a)
+derive instance genericEither :: Generic (Either a b) _
+
+instance showEither :: (Show a, Show b) => Show (Either a b) where
+    show = genericShow
+
+instance applyEither :: Apply (Either a) where
+    apply (Left err) _ = Left err
+    apply (Right f)  x = f <$> x
+
+instance applicativeEither :: Applicative (Either a) where
+    pure = Right
+
+instance bindEither :: Bind (Either a) where
+    bind (Left err) _ = Left err
+    bind (Right x)  f = f x
+
+instance monadEither :: Monad (Either a)
 
 test :: Effect Unit
 test = do
@@ -46,4 +66,20 @@ test = do
     log $ show do
         _ <- Just 20
         y <- Nothing
+        pure $ y + 42
+
+    log "Applicative Either:"
+    log $ show $ Right (_ * 10) <*> (Right 20 :: Either Unit _)
+    log $ show $ Right (_ * 10) <*> (pure 20 :: Either Unit _)
+
+    log "Monad Either:"
+    log $ show $ (Right 20 :: Either Unit _) >>= pure <<< (_ * 10)
+    log $ show do
+        x <- Right 20 :: Either Unit _
+        let y = x * 10
+        pure y
+    log $ show $ Right 20 >>= const (Left "error") >>= \y -> Right $ y + 42
+    log $ show do
+        _ <- Right 20
+        y <- Left "error"
         pure $ y + 42

@@ -3,6 +3,7 @@ module MonadicParser where
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
+import Data.Array ((:))
 import Data.CodePoint.Unicode (isAlpha, isDecDigit)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
@@ -185,6 +186,43 @@ count' :: ∀ e. Int -> Parser e Char -> Parser e String
 -- use `map` (`<$>`) as the resulting array is in the `Parser` context
 count' n p = fromCharArray <$> count n p
 
+-- type aliases for the different parts to avoid misplacing them
+newtype Year = Year Int
+newtype Month = Month Int
+newtype Day = Day Int
+-- available date formats
+data DateFormat = YearFirst | MonthFirst
+-- record type of the date, this construct handles the addition of new formats better and with less boilerplate
+type DateParts =
+    { year :: Year
+    , month :: Month
+    , day :: Day
+    , format :: DateFormat
+    }
+
+-- `Parser` that returns a `Parser` containing a default value if it fails
+optional :: ∀ e a. a -> Parser e a -> Parser e a
+-- if `p` failed, return a `Parser` that contains `x` using `alt` (`<|>`)
+optional x p = p <|> pure x
+
+-- parses at most `n` characters, the first parameter is a `cons`-like function that allows this function to append an element
+-- to a collection
+atMost :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Int -> Parser e a -> Parser e (f a)
+atMost cons n p
+    -- if `n` is invalid, return a `Parser` that returns an empty `Unfoldable`
+    | n <= 0 = pure none
+    -- here, `optional` is used to catch any errors that might have happened during parsing,
+    -- returning an empty `Unfoldable` in this case, as this function should never fail, just stop parsing when there are no more valid characters left
+    -- after a successful parse, append the resulting `c` to the container under construction
+    -- for this, the `cons` function is partially applied, then `map`ped over `atMost` with a decremented index
+    -- this makes this `Parser` parse a maximum of `n` tokens, while also short-circuiting and returning the accumulated result
+    -- in the event the next token could not be parsed
+    | otherwise = optional none $ p >>= \c -> cons c <$> atMost cons (n - 1) p
+
+-- `atMost` that automatically constructs a `String` from the resulting `Array Char`
+atMost' :: ∀ e. Int -> Parser e Char -> Parser e String
+atMost' n p = fromCharArray <$> atMost (:) n p
+
 test :: Effect Unit
 test = do
     log "char:"
@@ -208,3 +246,8 @@ test = do
     log "alphaNum:"
     log $ show $ parse' (count' 10 alphaNum) "a1b2c3d4e5"
     log $ show $ parse' (count' 10 alphaNum) "######"
+
+    log "atMost:"
+    log $ show $ parse' (atMost' (-2) alphaNum) "a1b2c3"
+    log $ show $ parse' (atMost' 2 alphaNum) "$_$"
+    log $ show $ parse' (atMost' 2 alphaNum) "a1b2c3"

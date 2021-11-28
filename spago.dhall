@@ -4,7 +4,8 @@ You can edit this file as you like.
 -}
 { name = "my-project"
 , dependencies =
-    [ "bifunctors"
+    [ "arrays"
+    , "bifunctors"
     , "console"
     , "contravariant"
     , "control"

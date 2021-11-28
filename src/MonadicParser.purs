@@ -223,6 +223,23 @@ atMost cons n p
 atMost' :: ∀ e. Int -> Parser e Char -> Parser e String
 atMost' n p = fromCharArray <$> atMost (:) n p
 
+-- parse min..max characters
+-- `Semigroup (f a) is required for `<>`, `Traversable` is required because of `count`, and `Traversable` because of `none` and `atMost`
+range :: ∀ e a f. Semigroup (f a) => Traversable f => Unfoldable f => (a -> f a -> f a) -> Int -> Int -> Parser e a -> Parser e (f a)
+range cons min max p
+    -- error case when the bounds do not add up, just return a `Parser` returning an empty `Unfoldable`
+    -- `min` can be equal to `0` as the caller might only want to parse optionally, while `max` must be positive
+    |      min < 0
+        || max <= 0
+        || max < min = pure none
+    -- first, parse the `min` number of tokens using `count`, failing if there was not enough
+    -- then, try parsing the remaining, optional ones using `atMost`, which return an empty collection when it finished or encountered an error
+    -- finally, concatenate the two results by partially applying `<>` and using `<$>` for the second parameter
+    | otherwise      = count min p >>= \cs -> (cs <> _) <$> atMost cons (max - min) p
+
+range' :: ∀ e. Int -> Int -> Parser e Char -> Parser e String
+range' min max p = fromCharArray <$> range (:) min max p
+
 test :: Effect Unit
 test = do
     log "char:"

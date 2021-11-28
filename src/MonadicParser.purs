@@ -251,3 +251,4 @@ test = do
     log $ show $ parse' (atMost' (-2) alphaNum) "a1b2c3"
     log $ show $ parse' (atMost' 2 alphaNum) "$_$"
     log $ show $ parse' (atMost' 2 alphaNum) "a1b2c3"
+    log $ show $ parse' (atMost' 5 alphaNum) "a"

@@ -6,11 +6,12 @@ import Control.Alt (class Alt, (<|>))
 import Data.Array ((:))
 import Data.CodePoint.Unicode (isAlpha, isDecDigit)
 import Data.Either (Either(..))
+import Data.Int (fromString)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Show.Generic (genericShow)
 import Data.String.CodePoints (codePointFromChar)
-import Data.String.CodeUnits (uncons, fromCharArray)
+import Data.String.CodeUnits (uncons, fromCharArray, singleton)
 import Data.Traversable (class Traversable, sequence)
 import Data.Tuple (Tuple(..), snd)
 import Data.Unfoldable (class Unfoldable, replicate, none)
@@ -193,12 +194,26 @@ newtype Day = Day Int
 -- available date formats
 data DateFormat = YearFirst | MonthFirst
 -- record type of the date, this construct handles the addition of new formats better and with less boilerplate
+-- as it is a `Record`, it is already `Show`
 type DateParts =
     { year :: Year
     , month :: Month
     , day :: Day
     , format :: DateFormat
     }
+
+derive instance genericYear :: Generic Year _
+instance showYear :: Show Year where
+    show = genericShow
+derive instance genericMonth :: Generic Month _
+instance showMonth :: Show Month where
+    show = genericShow
+derive instance genericDay :: Generic Day _
+instance showDay :: Show Day where
+    show = genericShow
+derive instance genericDateFormat :: Generic DateFormat _
+instance showDateFormat :: Show DateFormat where
+    show = genericShow
 
 -- `Parser` that returns a `Parser` containing a default value if it fails
 optional :: ∀ e a. a -> Parser e a -> Parser e a
@@ -237,8 +252,35 @@ range cons min max p
     -- finally, concatenate the two results by partially applying `<>` and using `<$>` for the second parameter
     | otherwise      = count min p >>= \cs -> (cs <> _) <$> atMost cons (max - min) p
 
+-- `range` that automatically converts the resulting `Array Char` to a `String`
 range' :: ∀ e. Int -> Int -> Parser e Char -> Parser e String
 range' min max p = fromCharArray <$> range (:) min max p
+
+-- `Parser` that checks whether the next character is the same as the one passed in
+-- upon a successful parse, this function discards the parsed character (using `void $ ...`)
+-- upon a failure, the function returns an error message consisting of the character that would be expected,
+-- `singleton` converts the character to a string
+constChar :: ∀ e. ParserError e => Char -> Parser e Unit
+constChar c = void $ satisfy (singleton c) (_ == c)
+
+-- converts a `String` to an `Int`, returning `0` if the input could not be parsed as one
+digitsToNum :: String -> Int
+digitsToNum = fromMaybe 0 <<< fromString
+
+yearFirst :: ∀ e. ParserError e => Parser e DateParts
+yearFirst = do
+    -- convert the resulting `String` to an `Int` and wrap it up in `Year`
+    -- adding the implied parentheses: `(Year <<< digitsToNum) <$> ...`,
+    -- so the composed function is `map`ped over the `Parser`'s result, which is then extracted using `<-`
+    year <- Year <<< digitsToNum <$> count' 4 digit
+    -- check that the `-` is there
+    constChar '-'
+    month <- Month <<< digitsToNum <$> range' 1 2 digit
+    constChar '-'
+    day <- Day <<< digitsToNum <$> range' 1 2 digit
+
+    -- wrap the result in DateParts`; `pure` is also needed as this is in a `do` block, so the result must be wrapped in a `Parser`
+    pure {year, month, day, format: YearFirst}
 
 test :: Effect Unit
 test = do
@@ -269,3 +311,6 @@ test = do
     log $ show $ parse' (atMost' 2 alphaNum) "$_$"
     log $ show $ parse' (atMost' 2 alphaNum) "a1b2c3"
     log $ show $ parse' (atMost' 5 alphaNum) "a"
+
+    log "yearFirst:"
+    log $ show $ parse' yearFirst "1999-12-31"

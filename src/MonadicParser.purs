@@ -280,7 +280,22 @@ yearFirst = do
     day <- Day <<< digitsToNum <$> range' 1 2 digit
 
     -- wrap the result in DateParts`; `pure` is also needed as this is in a `do` block, so the result must be wrapped in a `Parser`
-    pure {year, month, day, format: YearFirst}
+    pure {year, month, day, format: YearFirst }
+
+monthFirst :: ∀ e. ParserError e => Parser e DateParts
+monthFirst = do
+    month <- Month <<< digitsToNum <$> range' 1 2 digit
+    constChar '/'
+    day <- Day <<< digitsToNum <$> range' 1 2 digit
+    constChar '/'
+    year <- Year <<< digitsToNum <$> count' 4 digit
+
+    pure { year, month, day, format: MonthFirst }
+
+-- parses a date in the supported formats
+date :: ∀ e. ParserError e => Parser e DateParts
+-- try `yearFirst`, if it failed, fall back to `monthFirst`
+date = yearFirst <|> monthFirst
 
 test :: Effect Unit
 test = do
@@ -314,3 +329,5 @@ test = do
 
     log "yearFirst:"
     log $ show $ parse' yearFirst "1999-12-31"
+    log "monthFirst:"
+    log $ show $ parse' monthFirst "12/31/1999"

@@ -3,12 +3,14 @@ module MonadicParser where
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
+import Control.Lazy (class Lazy, defer)
 import Data.Array ((:))
 import Data.CodePoint.Unicode (isAlpha, isDecDigit)
 import Data.Either (Either(..))
 import Data.Int (fromString)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.NonEmpty (NonEmpty, (:|), fromNonEmpty)
 import Data.Show.Generic (genericShow)
 import Data.String.CodePoints (codePointFromChar)
 import Data.String.CodeUnits (uncons, fromCharArray, singleton)
@@ -297,6 +299,34 @@ date :: ∀ e. ParserError e => Parser e DateParts
 -- try `yearFirst`, if it failed, fall back to `monthFirst`
 date = yearFirst <|> monthFirst
 
+-- `Lazy` instance for `Parser`, which allows for `defer`ring an evaluation of the `Parser` in order to break recursive loops
+instance lazyParser :: Lazy (Parser e a) where
+    defer :: (Unit -> Parser e a) -> Parser e a
+    -- create a new `Parser` that just runs the one supplied by `f`
+    -- this `Parser` can be used in place of the original, with the benefit that it is not identical to it
+    defer f = Parser \s -> parse (f unit) s
+
+-- `Parser` that parses 1 or more elements (`+` in regex)
+some :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Parser e a -> Parser e (NonEmpty f a)
+-- `map` the `cons` operator over `p`, then `apply` `many p`, leading to the parsing of 1 or more tokens
+-- here, `defer` is used to break the recursive cycle that would otherwise occur because PureScript is an eager language,
+-- meaning it evaluates all inputs to functions, even if they are not needed
+-- by using `defer` and a factory function, the `Parser` used here is not the same one that is returned by `many`,
+-- which means that the cycle is broken: (also, for each call to `defer`, a new instance of this `Parser` is created, as seen below)
+-- `some -> defer many (1) -> many (1) -> some -> defer many (2) -> many (2) -> ...`
+some cons p = (:|) <$> p <*> defer \_ -> many cons p
+
+-- `Parser` that parser 0 or more elements (`*` in regex)
+many :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Parser e a -> Parser e (f a)
+-- try parsing 1 or more elements, return a `Parser` containing an empty `Array` if it failed
+many cons p = fromNonEmpty cons <$> some cons p <|> pure none
+
+some' :: ∀ e. Parser e Char -> Parser e String
+some' p = fromCharArray <<< fromNonEmpty (:) <$> some (:) p
+
+many' :: ∀ e. Parser e Char -> Parser e String
+many' p = fromCharArray <$> many (:) p
+
 test :: Effect Unit
 test = do
     log "char:"
@@ -331,3 +361,8 @@ test = do
     log $ show $ parse' yearFirst "1999-12-31"
     log "monthFirst:"
     log $ show $ parse' monthFirst "12/31/1999"
+
+    log "many, some:"
+    log $ show $ parse' (some' digit) "2343423423abc"
+    log $ show $ parse' (many' digit) "_2343423423abc"
+    log $ show $ parse' (some' digit) "_2343423423abc"

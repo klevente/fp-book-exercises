@@ -307,7 +307,7 @@ instance lazyParser :: Lazy (Parser e a) where
     defer f = Parser \s -> parse (f unit) s
 
 -- `Parser` that parses 1 or more elements (`+` in regex)
-some :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Parser e a -> Parser e (NonEmpty f a)
+some :: ∀ a f m. Unfoldable f => Alt m => Applicative m => Lazy (m (f a)) => (a -> f a -> f a) -> m a -> m (NonEmpty f a)
 -- `map` the `cons` operator over `p`, then `apply` `many p`, leading to the parsing of 1 or more tokens
 -- here, `defer` is used to break the recursive cycle that would otherwise occur because PureScript is an eager language,
 -- meaning it evaluates all inputs to functions, even if they are not needed
@@ -317,7 +317,7 @@ some :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Parser e a -> Parser e (
 some cons p = (:|) <$> p <*> defer \_ -> many cons p
 
 -- `Parser` that parser 0 or more elements (`*` in regex)
-many :: ∀ e a f. Unfoldable f => (a -> f a -> f a) -> Parser e a -> Parser e (f a)
+many :: ∀ a f m. Unfoldable f => Alt m => Applicative m => Lazy (m (f a)) => (a -> f a -> f a) -> m a -> m (f a)
 -- try parsing 1 or more elements, return a `Parser` containing an empty `Array` if it failed
 many cons p = fromNonEmpty cons <$> some cons p <|> pure none
 

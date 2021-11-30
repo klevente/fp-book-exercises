@@ -263,7 +263,10 @@ range' min max p = fromCharArray <$> range (:) min max p
 -- upon a failure, the function returns an error message consisting of the character that would be expected,
 -- `singleton` converts the character to a string
 constChar :: ∀ e. ParserError e => Char -> Parser e Unit
-constChar c = void $ satisfy (singleton c) (_ == c)
+constChar = void <<< constChar'
+
+constChar' :: ∀ e. ParserError e => Char -> Parser e Char
+constChar' c = satisfy (singleton c) (_ == c)
 
 -- converts a `String` to an `Int`, returning `0` if the input could not be parsed as one
 digitsToNum :: String -> Int
@@ -308,7 +311,7 @@ instance lazyParser :: Lazy (Parser e a) where
 
 -- `Parser` that parses 1 or more elements (`+` in regex)
 some :: ∀ a f m. Unfoldable f => Alt m => Applicative m => Lazy (m (f a)) => (a -> f a -> f a) -> m a -> m (NonEmpty f a)
--- `map` the `cons` operator over `p`, then `apply` `many p`, leading to the parsing of 1 or more tokens
+-- `map` the `:|` operator over `p`, then `apply` `many p`, leading to the parsing of 1 or more tokens
 -- here, `defer` is used to break the recursive cycle that would otherwise occur because PureScript is an eager language,
 -- meaning it evaluates all inputs to functions, even if they are not needed
 -- by using `defer` and a factory function, the `Parser` used here is not the same one that is returned by `many`,
@@ -326,6 +329,41 @@ some' p = fromCharArray <<< fromNonEmpty (:) <$> some (:) p
 
 many' :: ∀ e. Parser e Char -> Parser e String
 many' p = fromCharArray <$> many (:) p
+
+-- `Parser` that tries to parser 1 or more digits
+digits :: ∀ e. ParserError e => Parser e String
+digits = some' digit
+
+-- `Parser` that parses this regular expression: `(\d{1,4}), ([a-zA-Z ]+)([0-9]*)`
+ugly :: ∀ e. ParserError e => Parser e (Array String)
+-- using `Monad`s really shines here as all error handling is happening automatically,
+-- leaving only the happy path inside the code, which greatly simplifies readibility
+ugly = do
+    p1 <- range' 1 4 digit
+    constChar ','
+    constChar ' '
+    p2 <- some' (letter <|> constChar' ' ')
+    p3 <- many' digit
+
+    pure [p1, p2, p3]
+
+-- `Applicative` version of `ugly`
+uglyA :: ∀ e. ParserError e => Parser e (Array String)
+uglyA = (\p1 p2 p3 -> [p1, p2, p3])  -- this is the `map`ping function that constructs the final result out of the parts
+    <$> range' 1 4 digit  -- start `map`ping over the function
+    <* constChar ','  -- discard the result of this, as `<*>` ignores the result of the right argument, while executing the side-effect (by parsing one character)
+    <* constChar ' ' -- discard the result of this
+    <*> some' (letter <|> constChar' ' ') -- parse the second group, now by using `apply` instead of `map`
+    <*> many' digit -- parse the last group
+
+-- `Bind` version of `ugly`
+uglyB :: ∀ e. ParserError e => Parser e (Array String)
+uglyB = range' 1 4 digit
+    >>= \p1 -> constChar ','
+        >>= \_ -> constChar ' '
+            >>= \_ -> some' (letter <|> constChar' ' ')
+                >>= \p2 -> many' digit
+                    >>= \p3 -> pure [p1, p2, p3]
 
 test :: Effect Unit
 test = do
@@ -366,3 +404,7 @@ test = do
     log $ show $ parse' (some' digit) "2343423423abc"
     log $ show $ parse' (many' digit) "_2343423423abc"
     log $ show $ parse' (some' digit) "_2343423423abc"
+
+    log "ugly:"
+    log $ show $ parse' ugly "17, some words"
+    log $ show $ parse' ugly "5432, some more words1234567890"

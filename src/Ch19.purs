@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -49,6 +50,19 @@ instance bindEither :: Bind (Either a) where
     bind (Right x)  f = f x
 
 instance monadEither :: Monad (Either a)
+
+-- type that combines the data of `Reader`, `Writer` and `State`
+type RWSResult r w s = { r :: r, w :: w, s :: s }
+
+-- model `RWS` like `State`, which holds a function of type: `s -> Tuple a s`, by including the state of all 3 `Monad`s
+-- `r`: read-only value, do not care about it when it is returned from any function as it can never change
+-- `w`: write-only value, do not care about it when it is an input to a function as it cannot be read
+-- `s`: read-write value, it depends on both input and output in a function
+newtype RWS r w s a = RWS (RWSResult r w s -> Tuple a (RWSResult r w s))
+
+instance functorRWS :: Functor (RWS r w s) where
+    -- first, run `g` on the input `rws`, then destructure the result to apply `f` to `x` and re-wrap everything
+    map f (RWS g) = RWS \rws -> g rws # \(Tuple x rws') -> Tuple (f x) rws'
 
 test :: Effect Unit
 test = do

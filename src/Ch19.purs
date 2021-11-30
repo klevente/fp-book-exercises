@@ -64,6 +64,37 @@ instance functorRWS :: Functor (RWS r w s) where
     -- first, run `g` on the input `rws`, then destructure the result to apply `f` to `x` and re-wrap everything
     map f (RWS g) = RWS \rws -> g rws # \(Tuple x rws') -> Tuple (f x) rws'
 
+instance applyRWS :: Monoid w => Apply (RWS r w s) where
+    -- as `RWS` is a `Monad`, leverage it by using `ap` for the `apply` function
+    apply = ap
+
+-- `w` is a `Monoid` as it needs to use `mempty` for creating an empty log sink
+instance applicativeRWS :: Monoid w => Applicative (RWS r w s) where
+    -- here, as `w` is write-only, its value is discarded in the destructured parameter, and is initialised as a new empty value
+    -- this will be required in any future functions where `w` is an input
+    pure x = RWS \{r, s} -> Tuple x { r, w: mempty, s }
+
+-- `w` is a `Semigroup` as it uses `<>` to combine the logs
+instance bindRWS :: Monoid w => Bind (RWS r w s) where
+    bind :: ∀ a b. (RWS r w s a) -> (a -> RWS r w s b) -> (RWS r w s b)
+    -- execute the first `RWS` by calling `g rws`
+    bind (RWS g) f = RWS \rws -> g rws
+        -- destructure the result, then run the second `RWS` which is obtained by `f x`, use `runRWS` to get back a `Tuple` which this lambda must return
+        # \(Tuple x rws'@{ w }) -> runRWS (f x) rws'
+            -- destructure the result, then return almost the same `Tuple`, with the combined logs of `g` and `f x`)
+            -- `rws''@{ w: w'}` means that the function can access `rws''` and its `Writer` part named `w'` at the same time
+            -- `rws'' { w = w <> w'}` is called "record update syntax", that returns the original record, with the fields specified in `{}` changed to the expression inside,
+            -- meaning that `w` is changed to contain the concatenation of the original `w` and `w'`
+            # \(Tuple y rws''@{ w: w' }) -> Tuple y rws'' { w = w <> w' }
+
+-- `w` is a `Monoid` as `applicativeRWS` requires `w` to be a `Monoid`
+instance monadRWS :: Monoid w => Monad (RWS r w s)
+
+runRWS :: ∀ r w s a. RWS r w s a -> (RWSResult r w s -> Tuple a (RWSResult r w s))
+runRWS (RWS f) = f
+
+
+
 test :: Effect Unit
 test = do
     log "Applicative Maybe:"

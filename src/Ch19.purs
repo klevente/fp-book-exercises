@@ -93,7 +93,40 @@ instance monadRWS :: Monoid w => Monad (RWS r w s)
 runRWS :: ∀ r w s a. RWS r w s a -> (RWSResult r w s -> Tuple a (RWSResult r w s))
 runRWS (RWS f) = f
 
+-- push data from the pure computation to the monadic one, hence why `a` is Unit, as this function exists solely because of its side-effect (from `Writer`)
+tell :: ∀ r w s. w -> RWS r w s Unit
+-- do not care about `w` in the incoming `RWSResult`, as it is a write-only value, so it is overwritten by the parameter `w`
+tell w = RWS \{ r, s } -> Tuple unit { r, w, s }
 
+-- pull data from the monadic computation to the pure one, hence `a` is `r` (from `Reader`)
+ask :: ∀ r w s. Monoid w => RWS r w s r
+-- return `r` as the pure result, paying attention that the log needs to be emptied
+ask = RWS \{ r, s } -> Tuple r { r, w: mempty, s }
+
+-- pull data from the monadic computation to the pure one, hence `a` is `s` (from `State`)
+get :: ∀ r w s. Monoid w => RWS r w s s
+get = RWS \{ r, s } -> Tuple s { r, w: mempty, s }
+
+-- push data from the pure computation to the monadic one, hance `a` is unit (from `State`)
+put :: ∀ r w s. Monoid w => s -> RWS r w s Unit
+put s = RWS \{ r } -> Tuple unit { r, w: mempty, s }
+
+type Config = { debugModeOn :: Boolean } -- read-only info
+type Counter = Int -- state
+
+--              r/o        w/o        state  res
+rwsTest :: RWS Config (Array String) Counter Unit
+rwsTest = do
+    tell ["test the log"]
+    tell ["test the log2", "test the log3"]
+    config <- ask
+    tell ["the config is " <> show config]
+    counter <- get
+    tell ["old counter is " <> show counter]
+    put $ counter + 1
+    newCounter <- get
+    tell ["new counter is " <> show newCounter]
+    pure unit
 
 test :: Effect Unit
 test = do
@@ -128,3 +161,6 @@ test = do
         _ <- Right 20
         y <- Left "error"
         pure $ y + 42
+
+    log "rwsTest:"
+    log $ show $ runRWS rwsTest { r: { debugModeOn: true }, w: mempty, s: 0 }

@@ -13,7 +13,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Effect.Console (log)
+import Effect.Console as Console
 
 newtype StateT s m a = StateT (s -> m (Tuple a s))
 
@@ -127,18 +127,22 @@ runApp :: Int -> AppM -> Effect AppResult
 -- could also have been written like this: `(results <$> _) <<< flip ....`, either way, the result of the computation inside the `Effect` is transformed by `results`
 runApp st = map results <<< flip runStateT st <<< runWriterT <<< runExceptT
 
+-- can be used instead of tell to automatically insert `\n` characters between the logs for increased readibility
+log :: ∀ m. MonadTell String m => String -> m Unit
+log str = tell $ str <> "\n"
+
 app :: AppM
 app = do
-    tell "Starting App..." -- write to the log
+    log "Starting App..." -- write to the log
     n <- get -- get the current state, which is an `Int`
     when (n == 0) $ void $ throwError "WE CANNOT HAVE A 0 STATE!" -- if `n` is `0`, throw an error and short-circuit
     put $ n + 1 -- increment `n` and overwrite the state with the result
-    tell "Incremented State" -- write to the log
+    log "Incremented State" -- write to the log
     pure $ unit -- return the pure computational value, which is in this case of type `Unit`
 
 test :: Effect Unit
 test = do
     result1 <- runApp 0 app
-    log $ show result1
+    Console.log $ show result1
     result2 <- runApp 99 app
-    log $ show result2
+    Console.log $ show result2

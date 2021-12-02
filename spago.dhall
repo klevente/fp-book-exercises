@@ -9,6 +9,7 @@ You can edit this file as you like.
     , "console"
     , "contravariant"
     , "control"
+    , "debug"
     , "effect"
     , "either"
     , "foldable-traversable"

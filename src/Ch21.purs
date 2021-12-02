@@ -4,13 +4,13 @@ import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError)
 import Control.Monad.Except.Trans (ExceptT, runExceptT)
-import Control.Monad.State.Class (class MonadState)
+import Control.Monad.State.Class (class MonadState, get, put)
 import Control.Monad.Reader.Class (class MonadAsk, ask)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Monad.Writer.Trans (WriterT, runWriterT)
-import Data.Either (Either)
-import Data.Maybe (Maybe)
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console (log)
@@ -115,14 +115,30 @@ type AppEffects = { log :: String, state :: Int, result :: Maybe Unit }
 type AppResult = Tuple (Maybe String) AppEffects
 -- these 2 types could have been like this: `type AppResult = { log :: String, state :: Int, result :: Either String Unit }`
 
+results :: StackResult -> AppResult
+results (Tuple (Tuple (Left err) l) s) = Tuple (Just err) { log: l, state: s, result: Nothing }
+results (Tuple (Tuple (Right result) l) s) = Tuple Nothing { log: l, state: s, result: Just result }
+
 -- run each level inside the monad stack
-runApp :: Int -> AppM -> Effect StackResult
+runApp :: Int -> AppM -> Effect AppResult
 -- by `flip`ping `runState`, the `st` parameter can be applied first, which enables this point-free definition
 -- this is because: `runState :: StateT s m a -> s -> m (Tuple a s)` => `flip runState :: s -> StateT s m a -> m (Tuple a s)`
-runApp st = flip runStateT st <<< runWriterT <<< runExceptT
+-- as a last step `results` is `map`ped over the final result to automatically convert it to the record-based format
+-- could also have been written like this: `(results <$> _) <<< flip ....`, either way, the result of the computation inside the `Effect` is transformed by `results`
+runApp st = map results <<< flip runStateT st <<< runWriterT <<< runExceptT
 
-
+app :: AppM
+app = do
+    tell "Starting App..." -- write to the log
+    n <- get -- get the current state, which is an `Int`
+    when (n == 0) $ void $ throwError "WE CANNOT HAVE A 0 STATE!" -- if `n` is `0`, throw an error and short-circuit
+    put $ n + 1 -- increment `n` and overwrite the state with the result
+    tell "Incremented State" -- write to the log
+    pure $ unit -- return the pure computational value, which is in this case of type `Unit`
 
 test :: Effect Unit
 test = do
-    log "placeholder"
+    result1 <- runApp 0 app
+    log $ show result1
+    result2 <- runApp 99 app
+    log $ show result2

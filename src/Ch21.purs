@@ -39,7 +39,19 @@ instance applicativeStateT :: Monad m => Applicative (StateT s m) where
     -- use `m`'s `pure` to wrap the pure value `x` in its context
     pure x = StateT \s -> pure $ Tuple x s
 
+instance bindStateT :: Monad m => Bind (StateT s m) where
+    bind :: ∀ a b. StateT s m a -> (a -> StateT s m b) -> StateT s m b
+    -- `bind` version of `Bind`, which is more terse as it uses `>>=`
+    -- `runStateT` is required as the contained function must return `m (Tuple a s)`, which needs to be unwrapped from
+    -- the result of `f x`, which is of type `StateT s m b`, for this, the current state (`s'`) also needs to be passed in
+    bind (StateT fmx) f = StateT \s -> fmx s >>= \(Tuple x s') -> runStateT (f x) s'
+    -- `do` notation version of the same, which is more verbose but maybe a bit more easy to read
+    {-bind (StateT fmx) f = StateT \s -> do
+        (Tuple x s') <- fmx s
+        runStateT (f x) s'
+    -}
 
+instance monadStateT :: Monad m => Monad (StateT s m)
 
 test :: Effect Unit
 test = do

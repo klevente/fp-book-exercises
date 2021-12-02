@@ -3,10 +3,14 @@ module Ch21 where
 import Prelude
 
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError)
+import Control.Monad.Except.Trans (ExceptT, runExceptT)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Reader.Class (class MonadAsk, ask)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Writer.Class (class MonadTell, tell)
+import Control.Monad.Writer.Trans (WriterT, runWriterT)
+import Data.Either (Either)
+import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console (log)
@@ -97,6 +101,26 @@ instance monadErrorStateT :: MonadError e m => MonadError e (StateT s m) where
     -- this means that in the event of an error, any changes to the state by `fmx` is lost if it calls `throwError`,
     -- as `runStateT` will get the original state s` instead of an updated one
     catchError (StateT fmx) f = StateT \s -> catchError (fmx s) \e -> runStateT (f e) s
+
+-- the application's `Monad` stack
+type AppStack e w s a = ExceptT e (WriterT w (StateT s Effect)) a
+-- type alias for the app `Monad` with concrete types for errors, logs, state and result
+type AppM = AppStack String String Int Unit
+
+-- type alias representing the app's result, from back to front: state, log, error handling (error message/pure result)
+type StackResult = Tuple (Tuple (Either String Unit) String) Int
+-- structured result of the app that is order-independent; as this computation can fail, `result` is wrapped in a `Maybe`
+type AppEffects = { log :: String, state :: Int, result :: Maybe Unit }
+-- final result of the app, also containing a potential error message wrapped in a `Maybe`
+type AppResult = Tuple (Maybe String) AppEffects
+-- these 2 types could have been like this: `type AppResult = { log :: String, state :: Int, result :: Either String Unit }`
+
+-- run each level inside the monad stack
+runApp :: Int -> AppM -> Effect StackResult
+-- by `flip`ping `runState`, the `st` parameter can be applied first, which enables this point-free definition
+-- this is because: `runState :: StateT s m a -> s -> m (Tuple a s)` => `flip runState :: s -> StateT s m a -> m (Tuple a s)`
+runApp st = flip runStateT st <<< runWriterT <<< runExceptT
+
 
 
 test :: Effect Unit

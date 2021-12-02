@@ -2,6 +2,10 @@ module Ch21 where
 
 import Prelude
 
+import Control.Monad.State.Class (class MonadState)
+import Control.Monad.Reader.Class (class MonadAsk, ask)
+import Control.Monad.Trans.Class (class MonadTrans, lift)
+import Control.Monad.Writer.Class (class MonadTell, tell)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console (log)
@@ -52,6 +56,31 @@ instance bindStateT :: Monad m => Bind (StateT s m) where
     -}
 
 instance monadStateT :: Monad m => Monad (StateT s m)
+
+instance monadStateStateT :: Monad m => MonadState s (StateT s m) where
+    state :: ∀ a. (s -> Tuple a s) -> StateT s m a
+    -- run `f` with the input `s`, wrap the result up in `m`'s context using `pure`
+    -- state f = StateT \s -> pure $ f s
+    -- point-free version, `$` replaced with `<<<`
+    state f = StateT $ pure <<< f
+
+instance monadTransStateT :: MonadTrans (StateT s) where
+    lift :: ∀ m a. Monad m => m a -> StateT s m a
+    -- lift the provided monadic value `mx` into `StateT` by extracting it's pure value `x` using `<#>` and returning it alongside `s`
+    lift mx = StateT \s -> mx <#> \x -> Tuple x s
+
+instance monadAskStateT :: MonadAsk r m => MonadAsk r (StateT s m) where
+    ask :: StateT s m r -- `StateT (s -> m (Tuple r s))`
+    -- run `ask` on the underlying monad, then wrap the result in a `Tuple` with the input state `s`
+    -- ask = StateT \s -> ask <#> \r -> Tuple r s
+    -- version using `liftStateT`
+    ask = lift ask
+
+instance monadTellStateT :: MonadTell w m => MonadTell w (StateT s m) where
+    tell :: w -> StateT s m Unit
+    -- tell w = StateT \s -> tell w <#> \_ -> Tuple unit s
+    -- point-free version using `liftStateT`
+    tell = lift <<< tell
 
 test :: Effect Unit
 test = do

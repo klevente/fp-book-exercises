@@ -21,6 +21,7 @@ You can edit this file as you like.
     , "profunctor"
     , "psci-support"
     , "strings"
+    , "transformers"
     , "tuples"
     , "unfoldable"
     , "unicode"

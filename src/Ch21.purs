@@ -2,6 +2,7 @@ module Ch21 where
 
 import Prelude
 
+import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError, throwError)
 import Control.Monad.State.Class (class MonadState)
 import Control.Monad.Reader.Class (class MonadAsk, ask)
 import Control.Monad.Trans.Class (class MonadTrans, lift)
@@ -81,6 +82,22 @@ instance monadTellStateT :: MonadTell w m => MonadTell w (StateT s m) where
     -- tell w = StateT \s -> tell w <#> \_ -> Tuple unit s
     -- point-free version using `liftStateT`
     tell = lift <<< tell
+
+instance monadThrowStateT :: MonadThrow e m => MonadThrow e (StateT s m) where
+    throwError :: ∀ a. e -> StateT s m a
+    throwError = lift <<< throwError
+
+instance monadErrorStateT :: MonadError e m => MonadError e (StateT s m) where
+    catchError :: ∀ a. StateT s m a -> (e -> StateT s m a) -> StateT s m a
+    -- execute `fmx` with `s`, leveraging `catchError` of the underlying `Monad` to catch errors
+    -- in the event of an error, the lambda will be executed, which replaces the failed `StateT` with
+    -- a new one computed using `f` and the error `e`
+    -- as `f e` returns a `StateT`, but it is inside a `StateT` lambda, the result must be run by `runStateT`
+    -- to unwrap the underlying `Tuple`; for this, a state is also required, of which there is only one, `s`
+    -- this means that in the event of an error, any changes to the state by `fmx` is lost if it calls `throwError`,
+    -- as `runStateT` will get the original state s` instead of an updated one
+    catchError (StateT fmx) f = StateT \s -> catchError (fmx s) \e -> runStateT (f e) s
+
 
 test :: Effect Unit
 test = do

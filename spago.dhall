@@ -25,6 +25,7 @@ You can edit this file as you like.
     , "prelude"
     , "profunctor"
     , "psci-support"
+    , "random"
     , "strings"
     , "transformers"
     , "tuples"

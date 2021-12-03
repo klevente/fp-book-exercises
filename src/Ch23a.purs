@@ -48,7 +48,6 @@ bomb ttAvar detonationCount = go 0 WaitingTick where
                     -- else just recurse without any state changes
                     else go count state
 
-
 test :: Effect Unit
 test = launchAff_ do
     ttAVar <- AVar.empty -- create an empty `AVar` that does not hold any value

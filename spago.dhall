@@ -28,6 +28,7 @@ You can edit this file as you like.
     , "psci-support"
     , "random"
     , "strings"
+    , "tailrec"
     , "transformers"
     , "tuples"
     , "unfoldable"

@@ -15,7 +15,8 @@ import Effect (Effect)
 -- import Ch19 as Ch19
 -- import MonadicParser as P
 -- import Ch21 as Ch21
-import Ch21a as Ch21a
+-- import Ch21a as Ch21a
+import Ch23a as Ch23a
 
 main :: Effect Unit
-main = Ch21a.test
+main = Ch23a.test

@@ -53,7 +53,6 @@ logger = forever do -- signal that this function needs to be ran over and over, 
     s <- liftAffToFiberM $ Bus.read bus -- `lift` twice as `read` runs in the `Aff` monad but this function runs in the `ReaderT` monad as it is on the top
     log $ "Logger: " <> s -- as all monad transformers have a `MonadEffect` instance, `log` can be called from anywhere without `lift`ing
 
-
 -- constant :: Aff Number
 -- constant = pure 0.0
 
@@ -78,8 +77,6 @@ randomGenerator valueType pred = do
         modify_ _ { count = count - 1 }
         randomGenerator valueType pred
 
-
-
 test :: Effect Unit
 test = launchAff_ do
          bus <- Bus.make
@@ -88,3 +85,7 @@ test = launchAff_ do
          forkFiberM $ randomGenerator "greater than 0.5" (_ > 0.5)
          forkFiberM $ randomGenerator "less than 0.5" (_ < 0.5)
          forkFiberM $ randomGenerator "greater than 0.1" (_ > 0.1)
+         -- the program terminates after all generators finished outputting (their `count` reached 0), but `logger` was never terminated!
+         -- this is because the JavaScript runtime did not know about any callbacks pending, as all of them reside inside PureScript
+         -- namely, `Bus.read`'s blocking is implemented in PureScript, so the engine does not know that there is still something hanging
+         -- this is not an issue in the generators, as `delayRandom` calls `setTimeout` internally somewhere, which is a native JavaScript callback

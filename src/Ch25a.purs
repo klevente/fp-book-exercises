@@ -2,7 +2,13 @@ module Ch25a where
 
 import Prelude
 
+import Affjax as Ajax
+import Affjax.ResponseFormat as ResponseFormat
+import Affjax.RequestBody as RequestBody
+import Data.Bifunctor (lmap)
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(..))
+import Effect.Aff (launchAff_)
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Foreign.Generic (genericDecode, genericEncode, encodeJSON)
@@ -81,5 +87,11 @@ teacher =
     }
 
 test :: Effect Unit
-test = do
-    log $ encodeJSON $ teacher
+test = launchAff_ do
+    -- call the API: response is a `String` (json), the body is wrapped in `Just` and in `RequestBody.String`
+    result <- Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher
+    -- `lmap` the error using `printError` to convert it to a `String`, which results in both arms of the `Either` to be `Show`able
+    log $ show $ lmap Ajax.printError result
+
+    -- one-liner version using reverse `bind`
+    -- log =<< show <<< lmap Ajax.printError <$> (Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher)

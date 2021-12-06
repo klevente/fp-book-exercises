@@ -68,6 +68,18 @@ instance decodeTeachingStatus :: Decode TeachingStatus where
 
 -- all `Record`s are already `Encode` and `Decode` as long as all their fields are, so no further instantiations are necessary
 
+teacher :: Teacher
+teacher =
+    { grades: [ Preschool, Kindergarten, Grade 1 ]
+    , numberOfStudents: 23
+    , personal: {
+          height: Centimeters 162.56
+        , weight: Kilograms 63.5
+        , age: Years 31
+        }
+    , status: NonTenured
+    }
+
 test :: Effect Unit
 test = do
-    log $ encodeJSON $ Centimeters 12.34
+    log $ encodeJSON $ teacher

@@ -86,7 +86,25 @@ instance showTeachingStatus :: Show TeachingStatus where
     show = genericShow
 
 -- all `Record`s are already `Encode` and `Decode` as long as all their fields are, so no further instantiations are necessary
--- all `Record`s are already `Show` as long as all their fileds are
+-- all `Record`s are already `Show` as long as all their fields are, so no further instantiations are necessary
+
+type ReversedPersonal =
+    { thgieh :: Centimeters
+    , thgiew :: Kilograms
+    , ega :: Years
+    }
+type ReversedStudent =
+    { edarg :: Grade
+    , rehcaet :: ReversedTeacher
+    , apg :: GPA
+    , lanosrep :: ReversedPersonal
+    }
+type ReversedTeacher =
+    { sedarg :: Array Grade
+    , stnedutSfOrebmun :: Int
+    , lanosrep :: ReversedPersonal
+    , sutats :: TeachingStatus
+    }
 
 teacher :: Teacher
 teacher =

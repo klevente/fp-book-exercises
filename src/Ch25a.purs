@@ -5,7 +5,7 @@ import Prelude
 import Affjax as Ajax
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.RequestBody as RequestBody
-import Data.Bifunctor (lmap)
+import Data.Bifunctor (bimap)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (launchAff_)
@@ -90,8 +90,9 @@ test :: Effect Unit
 test = launchAff_ do
     -- call the API: response is a `String` (json), the body is wrapped in `Just` and in `RequestBody.String`
     result <- Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher
-    -- `lmap` the error using `printError` to convert it to a `String`, which results in both arms of the `Either` to be `Show`able
-    log $ show $ lmap Ajax.printError result
+    -- `bimap` the error using `printError` to convert it to a `String`, which results in both arms of the `Either` to be `Show`able,
+    -- while also mapping the response to only contain the body (`_.body` => `\response -> response.body`)
+    log $ show $ bimap Ajax.printError _.body result
 
     -- one-liner version using reverse `bind`
     -- log =<< show <<< lmap Ajax.printError <$> (Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher)

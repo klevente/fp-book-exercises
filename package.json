@@ -22,5 +22,8 @@
   "devDependencies": {
     "purescript": "^0.14.1",
     "spago": "^0.20.0"
+  },
+  "dependencies": {
+    "xhr2": "^0.2.1"
   }
 }

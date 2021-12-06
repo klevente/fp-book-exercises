@@ -17,7 +17,8 @@ import Effect (Effect)
 -- import Ch21 as Ch21
 -- import Ch21a as Ch21a
 -- import Ch23a as Ch23a
-import Ch23b as Ch23b
+-- import Ch23b as Ch23b
+import Ch25a as Ch25a
 
 main :: Effect Unit
-main = Ch23b.test
+main = Ch25a.test

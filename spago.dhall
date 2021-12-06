@@ -5,6 +5,7 @@ You can edit this file as you like.
 { name = "my-project"
 , dependencies =
     [ "aff"
+    , "affjax"
     , "aff-bus"
     , "arrays"
     , "avar"
@@ -17,6 +18,7 @@ You can edit this file as you like.
     , "effect"
     , "either"
     , "exceptions"
+    , "foreign-generic"
     , "foldable-traversable"
     , "integers"
     , "lists"

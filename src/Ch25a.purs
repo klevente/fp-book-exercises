@@ -15,7 +15,7 @@ import Effect.Aff (launchAff_)
 import Effect (Effect)
 import Effect.Class.Console (log)
 import Foreign.Generic (genericDecode, genericEncode, encodeJSON, decodeJSON)
-import Foreign.Generic.Class (class Encode, class Decode, defaultOptions)
+import Foreign.Generic.Class (class Encode, class Decode, Options, SumEncoding(..), defaultOptions)
 
 newtype Centimeters = Centimeters Number
 newtype Kilograms = Kilograms Number
@@ -75,7 +75,7 @@ derive instance genericGrade :: Generic Grade _
 instance encodeGrade :: Encode Grade where
     encode = genericEncode defaultOptions
 instance decodeGrade :: Decode Grade where
-    decode = genericDecode defaultOptions
+    decode = genericDecode decodeOptions
 instance showGrade :: Show Grade where
     show = genericShow
 
@@ -83,7 +83,7 @@ derive instance genericTeachingStatus :: Generic TeachingStatus _
 instance encodeTeachingStatus :: Encode TeachingStatus where
     encode = genericEncode defaultOptions
 instance decodeTeachingStatus :: Decode TeachingStatus where
-    decode = genericDecode defaultOptions
+    decode = genericDecode decodeOptions
 instance showTeachingStatus :: Show TeachingStatus where
     show = genericShow
 
@@ -120,6 +120,17 @@ teacher =
     , status: NonTenured
     }
 
+-- `Options` for decoding json with reversed field names
+decodeOptions :: Options
+decodeOptions = defaultOptions
+    -- record update syntax, i.e. 'take `defaultOptions`, but replace these values with the ones right of `=`'
+    { sumEncoding = TaggedObject
+        { tagFieldName: "gat"
+        , contentsFieldName: "stnetnoc"
+        , constructorTagTransform: identity
+        }
+    }
+
 test :: Effect Unit
 test = launchAff_ do
     -- call the API: response is a `String` (json), the body is wrapped in `Just` and in `RequestBody.String`
@@ -133,6 +144,7 @@ test = launchAff_ do
 
     log $ case result of
         Left err -> Ajax.printError err
+        -- as the result of `decodeJSON` is inside an `Except` monad, it needs to be run with `runExcept`, which returns an `Either MultipleErrors ReversedTeacher` here
         Right { body } -> case runExcept (decodeJSON body :: _ ReversedTeacher) of
             Left err -> show err
             Right reversedTeacher -> show reversedTeacher

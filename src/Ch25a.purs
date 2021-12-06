@@ -5,14 +5,16 @@ import Prelude
 import Affjax as Ajax
 import Affjax.ResponseFormat as ResponseFormat
 import Affjax.RequestBody as RequestBody
-import Data.Bifunctor (bimap)
+import Control.Monad.Except (runExcept)
+-- import Data.Bifunctor (bimap)
+import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Effect.Aff (launchAff_)
 import Effect (Effect)
 import Effect.Class.Console (log)
-import Foreign.Generic (genericDecode, genericEncode, encodeJSON)
+import Foreign.Generic (genericDecode, genericEncode, encodeJSON, decodeJSON)
 import Foreign.Generic.Class (class Encode, class Decode, defaultOptions)
 
 newtype Centimeters = Centimeters Number
@@ -124,7 +126,13 @@ test = launchAff_ do
     result <- Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher
     -- `bimap` the error using `printError` to convert it to a `String`, which results in both arms of the `Either` to be `Show`able,
     -- while also mapping the response to only contain the body (`_.body` => `\response -> response.body`)
-    log $ show $ bimap Ajax.printError _.body result
+    -- log $ show $ bimap Ajax.printError _.body result
 
     -- one-liner version using reverse `bind`
     -- log =<< show <<< lmap Ajax.printError <$> (Ajax.post ResponseFormat.string "http://localhost:3000/" $ Just $ RequestBody.String $ encodeJSON teacher)
+
+    log $ case result of
+        Left err -> Ajax.printError err
+        Right { body } -> case runExcept (decodeJSON body :: _ ReversedTeacher) of
+            Left err -> show err
+            Right reversedTeacher -> show reversedTeacher

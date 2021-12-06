@@ -8,6 +8,7 @@ import Affjax.RequestBody as RequestBody
 import Data.Bifunctor (bimap)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
+import Data.Show.Generic (genericShow)
 import Effect.Aff (launchAff_)
 import Effect (Effect)
 import Effect.Class.Console (log)
@@ -47,32 +48,45 @@ derive newtype instance decodeCentimeters :: Decode Centimeters
     encode = genericEncode defaultOptions
 instance decodeCentimeters :: Decode Centimeters where
     decode = genericDecode defaultOptions-}
+instance showCentimeters :: Show Centimeters where
+    show = genericShow
 
 derive instance genericKilograms :: Generic Kilograms _
 derive newtype instance encodeKilograms :: Encode Kilograms
 derive newtype instance decodeKilograms :: Decode Kilograms
+instance showKilograms :: Show Kilograms where
+    show = genericShow
 
 derive instance genericYears :: Generic Years _
 derive newtype instance encodeYears :: Encode Years
 derive newtype instance decodeYears :: Decode Years
+instance showYears :: Show Years where
+    show = genericShow
 
 derive instance genericGPA :: Generic GPA _
 derive newtype instance encodeGPA :: Encode GPA
 derive newtype instance decodeGPA :: Decode GPA
+instance showGPA :: Show GPA where
+    show = genericShow
 
 derive instance genericGrade :: Generic Grade _
 instance encodeGrade :: Encode Grade where
     encode = genericEncode defaultOptions
 instance decodeGrade :: Decode Grade where
     decode = genericDecode defaultOptions
+instance showGrade :: Show Grade where
+    show = genericShow
 
 derive instance genericTeachingStatus :: Generic TeachingStatus _
 instance encodeTeachingStatus :: Encode TeachingStatus where
     encode = genericEncode defaultOptions
 instance decodeTeachingStatus :: Decode TeachingStatus where
     decode = genericDecode defaultOptions
+instance showTeachingStatus :: Show TeachingStatus where
+    show = genericShow
 
 -- all `Record`s are already `Encode` and `Decode` as long as all their fields are, so no further instantiations are necessary
+-- all `Record`s are already `Show` as long as all their fileds are
 
 teacher :: Teacher
 teacher =
